@@ -869,6 +869,52 @@ def do_single_file_inference(input_file_path):
         # Print highest probability result
         print(decoded[0][1])
 
+import tensorrt as trt
+
+def exportTensorRTEngine():
+    #convert-to-uff frozen_inference_graph.pb
+    #model_file = '/data/mnist/mnist.uff'
+    model_path = FLAGS.uff_file
+
+    TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+
+    # if trt_engine
+
+    # inputs = {
+    #     'input': input_tensor,
+    #     'previous_state_c': previous_state_c,
+    #     'previous_state_h': previous_state_h,
+    #     'input_samples': input_samples,
+    # }
+    # outputs = {
+    #     'outputs': logits,
+    #     'new_state_c': new_state_c,
+    #     'new_state_h': new_state_h,
+    #     'mfccs': mfccs,
+    # }
+
+
+    with trt.Builder(TRT_LOGGER) as builder, builder.create_network() as network, trt.UffParser() as parser:
+    # with builder = trt.Builder(TRT_LOGGER) as builder, builder.create_network() as network, trt.UffParser() as parser:
+        max_batch_size = 3
+        builder.max_batch_size = max_batch_size
+        builder.max_workspace_size = 1 <<  20 # This determines the amount of memory available to the builder when building an optimized engine and should generally be set as high as possible.
+
+        # parser.register_input("previous_state_c")#Placeholder
+        # parser.register_input("previous_state_h")#Placeholder
+        # parser.register_input("input_samples")#Placeholder
+
+        parser.register_output("logits")#softmax
+        parser.register_output("new_state_c")#Identity
+        parser.register_output("new_state_h")#identity
+        parser.register_output("mfccs")#identity
+        parser.parse(model_path, network)
+
+        with builder.build_cuda_engine(network) as engine:
+            with open("output_graph_trt.engine", "wb") as f:
+                    f.write(engine.serialize())            
+    # Do inference here.
+
 
 def main(_):
     initialize_globals()
@@ -889,6 +935,9 @@ def main(_):
     if FLAGS.one_shot_infer:
         tfv1.reset_default_graph()
         do_single_file_inference(FLAGS.one_shot_infer)
+    
+    if FLAGS.export_tensorrt_engine:
+        exportTensorRTEngine()
 
 if __name__ == '__main__':
     create_flags()

@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <chrono>
+#include <stdlib.h>  
 
 #include "deepspeech.h"
 #include "alphabet.h"
@@ -34,6 +36,10 @@
 #endif // __ANDROID__
 
 using std::vector;
+
+using namespace std::chrono;
+using namespace std;
+
 
 /* This is the implementation of the streaming inference API.
 
@@ -82,11 +88,11 @@ struct StreamingState {
   char* finishStream();
   Metadata* finishStreamWithMetadata();
 
-  void processAudioWindow(const vector<float>& buf);
-  void processMfccWindow(const vector<float>& buf);
-  void pushMfccBuffer(const vector<float>& buf);
+  void processAudioWindow(const vector<float>& buf, int id);
+  void processMfccWindow(const vector<float>& buf, int id);
+  void pushMfccBuffer(const vector<float>& buf, int id);
   void addZeroMfccWindow();
-  void processBatch(const vector<float>& buf, unsigned int n_steps);
+  void processBatch(const vector<float>& buf, unsigned int n_steps, int id);
 };
 
 StreamingState::StreamingState()
@@ -109,6 +115,10 @@ void
 StreamingState::feedAudioContent(const short* buffer,
                                  unsigned int buffer_size)
 {
+  int id = rand() % 100000 + 1;
+
+  int start = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+
   // Consume all the data that was passed in, processing full buffers if needed
   while (buffer_size > 0) {
     while (buffer_size > 0 && audio_buffer_.size() < model_->audio_win_len_) {
@@ -121,13 +131,15 @@ StreamingState::feedAudioContent(const short* buffer,
 
     // If the buffer is full, process and shift it
     if (audio_buffer_.size() == model_->audio_win_len_) {
-      processAudioWindow(audio_buffer_);
+      processAudioWindow(audio_buffer_, id);
       // Shift data by one step
       shift_buffer_left(audio_buffer_, model_->audio_win_step_);
     }
 
     // Repeat until buffer empty
   }
+  int end = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+  cout << id << " feedAudioContent: " << (end-start) << "\n";
 }
 
 char*
@@ -151,20 +163,34 @@ StreamingState::finishStreamWithMetadata()
 }
 
 void
-StreamingState::processAudioWindow(const vector<float>& buf)
+StreamingState::processAudioWindow(const vector<float>& buf, int id)
 {
   // Compute MFCC features
   vector<float> mfcc;
   mfcc.reserve(model_->n_features_);
+  milliseconds ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+  int start = ms.count();
   model_->compute_mfcc(buf, mfcc);
-  pushMfccBuffer(mfcc);
+  milliseconds ms2 = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+  int end = ms2.count();
+
+  cout << id << " computeMfcc: " << (end-start) << "\n";
+
+  ms = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+  start = ms.count();
+  pushMfccBuffer(mfcc, id);
+  ms2 = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+  end = ms2.count();
+  if(end-start != 0) {
+    cout << id << " pushMfccBuffer: " << (end-start) << "\n";
+  }
 }
 
 void
 StreamingState::finalizeStream()
 {
   // Flush audio buffer
-  processAudioWindow(audio_buffer_);
+  processAudioWindow(audio_buffer_, 0);
 
   // Add empty mfcc vectors at end of sample
   for (int i = 0; i < model_->n_context_; ++i) {
@@ -173,7 +199,7 @@ StreamingState::finalizeStream()
 
   // Process final batch
   if (batch_buffer_.size() > 0) {
-    processBatch(batch_buffer_, batch_buffer_.size()/model_->mfcc_feats_per_timestep_);
+    processBatch(batch_buffer_, batch_buffer_.size()/model_->mfcc_feats_per_timestep_, 0);
   }
 }
 
@@ -181,7 +207,7 @@ void
 StreamingState::addZeroMfccWindow()
 {
   vector<float> zero_buffer(model_->n_features_, 0.f);
-  pushMfccBuffer(zero_buffer);
+  pushMfccBuffer(zero_buffer, 0);
 }
 
 template<typename InputIt, typename OutputIt>
@@ -194,7 +220,7 @@ copy_up_to_n(InputIt from_begin, InputIt from_end, OutputIt to_begin, int max_el
 }
 
 void
-StreamingState::pushMfccBuffer(const vector<float>& buf)
+StreamingState::pushMfccBuffer(const vector<float>& buf, int id)
 {
   auto start = buf.begin();
   auto end = buf.end();
@@ -206,7 +232,11 @@ StreamingState::pushMfccBuffer(const vector<float>& buf)
 
     // If we have a full context window
     if (mfcc_buffer_.size() == model_->mfcc_feats_per_timestep_) {
-      processMfccWindow(mfcc_buffer_);
+      int strt = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+      processMfccWindow(mfcc_buffer_, id);
+      int end = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+      cout << id << " processMfccWindow: " << (end-strt) << "\n";
+
       // Shift data by one step of one mfcc feature vector
       shift_buffer_left(mfcc_buffer_, model_->n_features_);
     }
@@ -214,7 +244,7 @@ StreamingState::pushMfccBuffer(const vector<float>& buf)
 }
 
 void
-StreamingState::processMfccWindow(const vector<float>& buf)
+StreamingState::processMfccWindow(const vector<float>& buf, int id)
 {
   auto start = buf.begin();
   auto end = buf.end();
@@ -226,23 +256,31 @@ StreamingState::processMfccWindow(const vector<float>& buf)
 
     // If we have a full batch
     if (batch_buffer_.size() == model_->n_steps_ * model_->mfcc_feats_per_timestep_) {
-      processBatch(batch_buffer_, model_->n_steps_);
+      int start = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+      processBatch(batch_buffer_, model_->n_steps_, id);
+      int end = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+      cout << id << " processBatch: " << (end-start) << "\n";
+
       batch_buffer_.resize(0);
     }
   }
 }
 
 void
-StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
+StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps, int id)
 {
   vector<float> logits;
+  int start = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
   model_->infer(buf,
                 n_steps,
                 previous_state_c_,
                 previous_state_h_,
                 logits,
                 previous_state_c_,
-                previous_state_h_);
+                previous_state_h_,
+                id);
+  int end = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+  cout << id << " infer: " << (end-start) << "\n";
 
   const size_t num_classes = model_->alphabet_.GetSize() + 1; // +1 for blank
   const int n_frames = logits.size() / (ModelState::BATCH_SIZE * num_classes);

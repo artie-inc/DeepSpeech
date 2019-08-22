@@ -58,7 +58,8 @@ struct ModelState {
                      const std::vector<float>& previous_state_h,
                      std::vector<float>& logits_output,
                      std::vector<float>& state_c_output,
-                     std::vector<float>& state_h_output) = 0;
+                     std::vector<float>& state_h_output,
+                     int feedID) = 0;
 
   /**
    * @brief Perform decoding of the logits, using basic CTC decoder or

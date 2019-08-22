@@ -1,9 +1,12 @@
 #include "tfmodelstate.h"
-
+#include <chrono>
 #include "workspace_status.h"
 
 using namespace tensorflow;
 using std::vector;
+using namespace std::chrono;
+using namespace std;
+
 
 TFModelState::TFModelState()
   : ModelState()
@@ -171,7 +174,8 @@ TFModelState::infer(const std::vector<float>& mfcc,
                     const std::vector<float>& previous_state_h,
                     vector<float>& logits_output,
                     vector<float>& state_c_output,
-                    vector<float>& state_h_output)
+                    vector<float>& state_h_output,
+                    int feedID)
 {
   const size_t num_classes = alphabet_.GetSize() + 1; // +1 for blank
 
@@ -183,6 +187,9 @@ TFModelState::infer(const std::vector<float>& mfcc,
   input_lengths.scalar<int>()() = n_frames;
 
   vector<Tensor> outputs;
+
+  int start = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+
   Status status = session_->Run(
     {
      {"input_node", input},
@@ -193,7 +200,8 @@ TFModelState::infer(const std::vector<float>& mfcc,
     {"logits", "new_state_c", "new_state_h"},
     {},
     &outputs);
-
+  int end = duration_cast< milliseconds >(system_clock::now().time_since_epoch()).count();
+  cout << feedID << " session_->Run(): " << (end-start) << "\n";
   if (!status.ok()) {
     std::cerr << "Error running session: " << status << "\n";
     return;

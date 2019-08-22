@@ -78,6 +78,11 @@ def create_flags():
     f.DEFINE_integer('n_steps', 16, 'how many timesteps to process at once by the export graph, higher values mean more latency')
     f.DEFINE_string('export_language', '', 'language the model was trained on e.g. "en" or "English". Gets embedded into exported model.')
 
+    # Exporting TensorRT
+
+    f.DEFINE_boolean('export_tensorrt_engine', True, 'whether to export a uff file specified as a TensorRT engine file')
+    f.DEFINE_string('uff_file', '', 'the input uff file from which to export a TensorRT engine file')
+
     # Reporting
 
     f.DEFINE_integer('log_level', 1, 'log level for console logs - 0: INFO, 1: WARN, 2: ERROR, 3: FATAL')
