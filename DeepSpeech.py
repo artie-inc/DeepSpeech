@@ -39,7 +39,8 @@ def variable_on_cpu(name, shape, initializer):
     # Use the /cpu:0 device for scoped operations
     with tf.device(Config.cpu_device):
         # Create or get apropos variable
-        var = tfv1.get_variable(name=name, shape=shape, initializer=initializer)
+        # var = tfv1.get_variable(name=name, shape=shape, initializer=initializer)
+        var = tfv1.get_variable(name=name, shape=shape)
     return var
 
 
@@ -65,10 +66,12 @@ def create_overlapping_windows(batch_x):
 
 def dense(name, x, units, dropout_rate=None, relu=True):
     with tfv1.variable_scope(name):
-        bias = variable_on_cpu('bias', [units], tfv1.zeros_initializer())
+        # bias = variable_on_cpu('bias', [units], tf.zeros_initializer())
+        weights = variable_on_cpu('weights', [x.shape[-1], units], tf.contrib.layers.xavier_initializer())
         weights = variable_on_cpu('weights', [x.shape[-1], units], tfv1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
 
-    output = tf.nn.bias_add(tf.matmul(x, weights), bias)
+    # output = tf.nn.bias_add(tf.matmul(x, weights), bias)
+    output = tf.matmul(x, weights)
 
     if relu:
         output = tf.minimum(tf.nn.relu(output), FLAGS.relu_clip)
@@ -140,6 +143,92 @@ def rnn_impl_static_rnn(x, seq_length, previous_state, reuse):
         output = tf.concat(output, 0)
 
     return output, output_state
+
+# def rnn_impl_cudnn_compatible_rnn(x, seq_length, previous_state, _):
+#     assert previous_state is None # 'Passing previous state not supported with CuDNN backend'
+
+#     # Hack: CudnnLSTM works similarly to Keras layers in that when you instantiate
+#     # the object it creates the variables, and then you just call it several times
+#     # to enable variable re-use. Because all of our code is structure in an old
+#     # school TensorFlow structure where you can just call tf.get_variable again with
+#     # reuse=True to reuse variables, we can't easily make use of the object oriented
+#     # way CudnnLSTM is implemented, so we save a singleton instance in the function,
+#     # emulating a static function variable.
+#     if not rnn_impl_cudnn_compatible_rnn.cell:
+#         # Forward direction cell:
+#         fw_cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_layers=1,
+#                                                  num_units=Config.n_cell_dim,
+#                                                  input_mode='linear_input',
+#                                                  direction='unidirectional',
+#                                                  dtype=tf.float32)
+#         rnn_impl_cudnn_compatible_rnn.cell = fw_cell
+
+#     output, output_state = rnn_impl_cudnn_compatible_rnn.cell(inputs=x,
+#                                                    sequence_lengths=seq_length)
+
+#     return output, output_state
+
+# def rnn_impl_cudnn_compatible_rnn(x, seq_length, previous_state, reuse):
+#     with tfv1.variable_scope('cudnn_lstm/rnn/cudnn_compatible/cell_0'):
+#         fw_cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(Config.n_cell_dim,
+#                                                     reuse=reuse)
+#                                                     #name='cudnn_compatible_lstm_cell')
+
+#         # output, output_state = fw_cell(inputs=x,
+#         #                                dtype=tf.float32,
+#         #                                sequence_length=seq_length,
+#         #                                initial_state=previous_state)
+#         output, output_state = fw_cell(x, previous_state)
+
+
+#     return output, output_state
+
+def rnn_impl_cudnn_compatible_rnn(x, seq_length, previous_state, reuse):
+    assert previous_state is None # 'Passing previous state not supported with CuDNN backend'
+
+    # Hack: CudnnLSTM works similarly to Keras layers in that when you instantiate
+    # the object it creates the variables, and then you just call it several times
+    # to enable variable re-use. Because all of our code is structure in an old
+    # school TensorFlow structure where you can just call tf.get_variable again with
+    # reuse=True to reuse variables, we can't easily make use of the object oriented
+    # way CudnnLSTM is implemented, so we save a singleton instance in the function,
+    # emulating a static function variable.
+    if not rnn_impl_cudnn_compatible_rnn.cell:
+        # Forward direction cell:
+        fw_cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1,
+                                                 num_units=Config.n_cell_dim,
+                                                 input_mode='linear_input',
+                                                 direction='unidirectional',
+                                                 dtype=tf.float32)
+        rnn_impl_cudnn_compatible_rnn.cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(Config.n_cell_dim,
+                                                    reuse=reuse)
+        # previous_state = ([1,1],[1,1])
+        print(x.shape[2])
+        # x = tf.zeros([1,x.shape[2]])
+        # x = tf.placeholder(tf.float32, (1,2048))
+        x = tf.convert_to_tensor(np.zeros((1,x.shape[2])), tf.float32)
+        
+        previous_state = [x,x]
+        
+    print("hi")
+    print(x)
+    print(x.shape)
+    print(x[0,:])
+    print(x[0,1])
+    print(x[0,2])
+    # print(x[0,:,:])
+    # exit
+    #i,j,k = x
+    # print(x[0,:,:].shape)
+    output, output_state = rnn_impl_cudnn_compatible_rnn.cell(x,  previous_state)
+
+
+    return output, output_state
+
+
+#   inputs: `3-D` tensor with shape `[time_len, batch_size, input_size]`
+
+rnn_impl_cudnn_compatible_rnn.cell = None
 
 
 def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, previous_state=None, overlap=True, rnn_impl=rnn_impl_lstmblockfusedcell):
@@ -644,14 +733,21 @@ def test():
     evaluate(FLAGS.test_files.split(','), create_model, try_loading)
 
 
-def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
-    batch_size = batch_size if batch_size > 0 else None
-
+def create_computation_inference_graph():
     # Create feature computation graph
     input_samples = tfv1.placeholder(tf.float32, [Config.audio_window_samples], 'input_samples')
     samples = tf.expand_dims(input_samples, -1)
     mfccs, _ = samples_to_mfccs(samples, FLAGS.audio_sample_rate)
-    mfccs = tf.identity(mfccs, name='mfccs')
+    mfccs = tf.identity(mfccs, name='mfccs') 
+
+def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
+    batch_size = batch_size if batch_size > 0 else None
+
+    # Create feature computation graph
+    # input_samples = tfv1.placeholder(tf.float32, [Config.audio_window_samples], 'input_samples')
+    # samples = tf.expand_dims(input_samples, -1)
+    # mfccs, _ = samples_to_mfccs(samples, FLAGS.audio_sample_rate)
+    # mfccs = tf.identity(mfccs, name='mfccs')
 
     # Input tensor will be of shape [batch_size, n_steps, 2*n_context+1, n_input]
     # This shape is read by the native_client in DS_CreateModel to know the
@@ -672,18 +768,20 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
     # One rate per layer
     no_dropout = [None] * 6
 
-    if tflite:
-        rnn_impl = rnn_impl_static_rnn
-    else:
-        rnn_impl = rnn_impl_lstmblockfusedcell
+
+    # if tflite:
+    # rnn_impl = rnn_impl_static_rnn
+    # else:
+    # rnn_impl = rnn_impl_lstmblockfusedcell
 
     logits, layers = create_model(batch_x=input_tensor,
                                   batch_size=batch_size,
                                   seq_length=seq_length if not FLAGS.export_tflite else None,
                                   dropout=no_dropout,
-                                  previous_state=previous_state,
+                                #   previous_state=previous_state,
                                   overlap=False,
-                                  rnn_impl=rnn_impl)
+                                  rnn_impl=rnn_impl_cudnn_compatible_rnn)
+                                #   rnn_impl=rnn_impl)
 
     # TF Lite runtime will check that input dimensions are 1, 2 or 4
     # by default we get 3, the middle one being batch_size which is forced to
@@ -718,7 +816,7 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
         'input': input_tensor,
         'previous_state_c': previous_state_c,
         'previous_state_h': previous_state_h,
-        'input_samples': input_samples,
+        # 'input_samples': input_samples,
     }
 
     if not FLAGS.export_tflite:
@@ -728,7 +826,7 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
         'outputs': logits,
         'new_state_c': new_state_c,
         'new_state_h': new_state_h,
-        'mfccs': mfccs,
+        # 'mfccs': mfccs,
     }
 
     return inputs, outputs, layers
@@ -736,6 +834,7 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
 def file_relative_read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+from tensorflow.python import pywrap_tensorflow
 
 def export():
     r'''
@@ -750,11 +849,32 @@ def export():
     output_names = ",".join(output_names_tensors + output_names_ops)
 
     # Create a saver using variables from the above newly created graph
-    saver = tfv1.train.Saver()
+    def fixup(name):
+        if name.startswith('cudnn_compatible_lstm_cell/'):
+            return name.replace('cudnn_compatible_lstm_cell/', 'lstm_fused_cell/')
+        return name
+    map2 = {v.op.name: v for v in tfv1.global_variables()}
+    print(map2)
+    mapping = {fixup(v.op.name): v for v in tfv1.global_variables()}
+    print(mapping)
+    saver = tfv1.train.Saver(mapping)
+    # saver = tfv1.train.Saver()
+
+
+
+
 
     # Restore variables from training checkpoint
     checkpoint = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    # print(checkpoint)
     checkpoint_path = checkpoint.model_checkpoint_path
+
+
+    reader = pywrap_tensorflow.NewCheckpointReader(checkpoint_path)
+    var_to_shape_map = reader.get_variable_to_shape_map()
+    print(var_to_shape_map)
+
+
 
     output_filename = 'output_graph.pb'
     if FLAGS.remove_export:
@@ -823,51 +943,51 @@ def export():
         log_error(str(e))
 
 
-def do_single_file_inference(input_file_path):
-    with tfv1.Session(config=Config.session_config) as session:
-        inputs, outputs, _ = create_inference_graph(batch_size=1, n_steps=-1)
+# def do_single_file_inference(input_file_path):
+#     with tfv1.Session(config=Config.session_config) as session:
+#         inputs, outputs, _ = create_inference_graph(batch_size=1, n_steps=-1)
 
-        # Create a saver using variables from the above newly created graph
-        saver = tfv1.train.Saver()
+#         # Create a saver using variables from the above newly created graph
+#         saver = tfv1.train.Saver()
 
-        # Restore variables from training checkpoint
-        # TODO: This restores the most recent checkpoint, but if we use validation to counteract
-        #       over-fitting, we may want to restore an earlier checkpoint.
-        checkpoint = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
-        if not checkpoint:
-            log_error('Checkpoint directory ({}) does not contain a valid checkpoint state.'.format(FLAGS.checkpoint_dir))
-            exit(1)
+#         # Restore variables from training checkpoint
+#         # TODO: This restores the most recent checkpoint, but if we use validation to counteract
+#         #       over-fitting, we may want to restore an earlier checkpoint.
+#         checkpoint = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+#         if not checkpoint:
+#             log_error('Checkpoint directory ({}) does not contain a valid checkpoint state.'.format(FLAGS.checkpoint_dir))
+#             exit(1)
 
-        checkpoint_path = checkpoint.model_checkpoint_path
-        saver.restore(session, checkpoint_path)
+#         checkpoint_path = checkpoint.model_checkpoint_path
+#         saver.restore(session, checkpoint_path)
 
-        features, features_len = audiofile_to_features(input_file_path)
-        previous_state_c = np.zeros([1, Config.n_cell_dim])
-        previous_state_h = np.zeros([1, Config.n_cell_dim])
+#         features, features_len = audiofile_to_features(input_file_path)
+#         previous_state_c = np.zeros([1, Config.n_cell_dim])
+#         previous_state_h = np.zeros([1, Config.n_cell_dim])
 
-        # Add batch dimension
-        features = tf.expand_dims(features, 0)
-        features_len = tf.expand_dims(features_len, 0)
+#         # Add batch dimension
+#         features = tf.expand_dims(features, 0)
+#         features_len = tf.expand_dims(features_len, 0)
 
-        # Evaluate
-        features = create_overlapping_windows(features).eval(session=session)
-        features_len = features_len.eval(session=session)
+#         # Evaluate
+#         features = create_overlapping_windows(features).eval(session=session)
+#         features_len = features_len.eval(session=session)
 
-        logits = outputs['outputs'].eval(feed_dict={
-            inputs['input']: features,
-            inputs['input_lengths']: features_len,
-            inputs['previous_state_c']: previous_state_c,
-            inputs['previous_state_h']: previous_state_h,
-        }, session=session)
+#         logits = outputs['outputs'].eval(feed_dict={
+#             inputs['input']: features,
+#             inputs['input_lengths']: features_len,
+#             inputs['previous_state_c']: previous_state_c,
+#             inputs['previous_state_h']: previous_state_h,
+#         }, session=session)
 
-        logits = np.squeeze(logits)
+#         logits = np.squeeze(logits)
 
-        scorer = Scorer(FLAGS.lm_alpha, FLAGS.lm_beta,
-                        FLAGS.lm_binary_path, FLAGS.lm_trie_path,
-                        Config.alphabet)
-        decoded = ctc_beam_search_decoder(logits, Config.alphabet, FLAGS.beam_width, scorer=scorer)
-        # Print highest probability result
-        print(decoded[0][1])
+#         scorer = Scorer(FLAGS.lm_alpha, FLAGS.lm_beta,
+#                         FLAGS.lm_binary_path, FLAGS.lm_trie_path,
+#                         Config.alphabet)
+#         decoded = ctc_beam_search_decoder(logits, Config.alphabet, FLAGS.beam_width, scorer=scorer)
+#         # Print highest probability result
+#         print(decoded[0][1])
 
 import tensorrt as trt
 
@@ -915,6 +1035,27 @@ def exportTensorRTEngine():
                     f.write(engine.serialize())            
     # Do inference here.
 
+import tensorflow.python.ops as ops
+
+def writeTensorBoard():
+    def get_graph_def_from_file(graph_filepath):
+        tf.reset_default_graph()
+        with ops.Graph().as_default():
+            with tf.gfile.GFile(graph_filepath, 'rb') as f:
+                graph_def = tf.GraphDef()
+                graph_def.ParseFromString(f.read())
+                return graph_def
+
+    filename="/hd/mf/deepspeech-models/deepspeech-0.6.0-models-split-cudnn/output_graph.pb"
+    graph_def =get_graph_def_from_file(filename)
+    for node in graph_def.node:
+        if node.op=='Placeholder':
+            print(node) # this will be the input node
+    
+    with tf.Session(graph=tf.Graph()) as session:
+        mygraph = tf.import_graph_def(graph_def, name='')
+        writer = tf.summary.FileWriter(logdir='log_tb/1', graph=session.graph)
+        writer.flush()
 
 def main(_):
     initialize_globals()
@@ -932,10 +1073,13 @@ def main(_):
         tfv1.reset_default_graph()
         export()
 
-    if FLAGS.one_shot_infer:
-        tfv1.reset_default_graph()
-        do_single_file_inference(FLAGS.one_shot_infer)
+    # if FLAGS.one_shot_infer:
+    #     tfv1.reset_default_graph()
+    #     do_single_file_inference(FLAGS.one_shot_infer)
     
+    if FLAGS.tensorboard:
+        writeTensorBoard()
+
     if FLAGS.export_tensorrt_engine:
         exportTensorRTEngine()
 

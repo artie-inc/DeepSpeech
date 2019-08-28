@@ -80,8 +80,12 @@ def create_flags():
 
     # Exporting TensorRT
 
-    f.DEFINE_boolean('export_tensorrt_engine', True, 'whether to export a uff file specified as a TensorRT engine file')
+    f.DEFINE_boolean('export_tensorrt_engine', False, 'whether to export a uff file specified as a TensorRT engine file')
     f.DEFINE_string('uff_file', '', 'the input uff file from which to export a TensorRT engine file')
+
+    # Exporting tensorboard
+
+    f.DEFINE_boolean('tensorboard', False, 'whether to export a tensorboard log file')
 
     # Reporting
 
