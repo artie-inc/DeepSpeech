@@ -39,8 +39,8 @@ def variable_on_cpu(name, shape, initializer):
     # Use the /cpu:0 device for scoped operations
     with tf.device(Config.cpu_device):
         # Create or get apropos variable
-        # var = tfv1.get_variable(name=name, shape=shape, initializer=initializer)
-        var = tfv1.get_variable(name=name, shape=shape)
+        var = tfv1.get_variable(name=name, shape=shape, initializer=initializer)
+        # var = tfv1.get_variable(name=name, shape=shape)
     return var
 
 
@@ -67,7 +67,7 @@ def create_overlapping_windows(batch_x):
 def dense(name, x, units, dropout_rate=None, relu=True):
     with tfv1.variable_scope(name):
         # bias = variable_on_cpu('bias', [units], tf.zeros_initializer())
-        weights = variable_on_cpu('weights', [x.shape[-1], units], tf.contrib.layers.xavier_initializer())
+        # weights = variable_on_cpu('weights', [x.shape[-1], units], tf.contrib.layers.xavier_initializer())
         weights = variable_on_cpu('weights', [x.shape[-1], units], tfv1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
 
     # output = tf.nn.bias_add(tf.matmul(x, weights), bias)
