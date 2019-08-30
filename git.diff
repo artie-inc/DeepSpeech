@@ -1,0 +1,99 @@
+diff --git a/DeepSpeech.py b/DeepSpeech.py
+index 5183407..79e63f7 100755
+--- a/DeepSpeech.py
++++ b/DeepSpeech.py
+@@ -79,6 +79,27 @@ def dense(name, x, units, dropout_rate=None, relu=True):
+     return output
+ 
+ 
++
++def rnn_impl_cudnn_compatible_rnn(x, seq_length, previous_state, reuse):
++
++    assert previous_state is None # 'Passing previous state not supported with CuDNN backend'
++    
++    if not rnn_impl_cudnn_compatible_rnn.cell:
++        
++        rnn_impl_cudnn_compatible_rnn.cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(Config.n_cell_dim, reuse=reuse)
++        
++        x = tf.zeros([1,x.shape[2]])
++        
++        
++        
++        previous_state = [x,x]
++        
++        output_seqs, states = rnn_impl_cudnn_compatible_rnn.cell(x,  previous_state)
++        
++    return output_seqs, states
++
++                                            
++
+ def rnn_impl_lstmblockfusedcell(x, seq_length, previous_state, reuse):
+     with tfv1.variable_scope('cudnn_lstm/rnn/multi_rnn_cell/cell_0'):
+         fw_cell = tf.contrib.rnn.LSTMBlockFusedCell(Config.n_cell_dim,
+@@ -677,6 +698,8 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
+     else:
+         rnn_impl = rnn_impl_lstmblockfusedcell
+ 
++   # rnn_impl = rnn_impl_cudnn_compatible_rnn
++    
+     logits, layers = create_model(batch_x=input_tensor,
+                                   batch_size=batch_size,
+                                   seq_length=seq_length if not FLAGS.export_tflite else None,
+@@ -750,7 +773,12 @@ def export():
+     output_names = ",".join(output_names_tensors + output_names_ops)
+ 
+     # Create a saver using variables from the above newly created graph
+-    saver = tfv1.train.Saver()
++    def fixup(name):
++        if name.startswith('cudnn_lstm/rnn/multi_rnn_cell/cell_0/cudnn_compatible_lstm_cell/'):
++            return name.replace('cudnn_lstm/rnn/multi_rnn_cell/cell_0/cudnn_compatible_lstm_cell/', 'lstm_fused_cell/')
++        return name
++    mapping = {fixup(v.op.name): v for v in tfv1.global_variables()}
++    saver = tfv1.train.Saver(mapping)
+ 
+     # Restore variables from training checkpoint
+     checkpoint = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+@@ -789,6 +817,20 @@ def export():
+ 
+         if not FLAGS.export_tflite:
+             frozen_graph = do_graph_freeze(output_node_names=output_names)
++
++            from tensorflow.contrib import tensorrt as trt
++            trt_graph = trt.create_inference_graph(
++                        input_graph_def=frozen_graph,  # frozen model
++                        outputs=['logits'],
++                        max_batch_size=512,  # specify your max batch size
++                        max_workspace_size_bytes=2 * (10 ** 9),  # specify the max workspace
++                        precision_mode="FP32")  # precision, can be "FP32" (32 floating point precision) or "FP16" .
++
++                # write the TensorRT model to be used later for inference
++            with tf.gfile.GFile("/home/ubuntu/trt_output_graph.pb", 'wb') as g:
++                g.write(trt_graph.SerializeToString())
++
++            exit()
+             frozen_graph.version = int(file_relative_read('GRAPH_VERSION').strip())
+ 
+             # Add a no-op node to the graph with metadata information to be loaded by the native client
+@@ -803,21 +845,7 @@ def export():
+ 
+             with open(output_graph_path, 'wb') as fout:
+                 fout.write(frozen_graph.SerializeToString())
+-        else:
+-            frozen_graph = do_graph_freeze(output_node_names=output_names)
+-            output_tflite_path = os.path.join(FLAGS.export_dir, output_filename.replace('.pb', '.tflite'))
+-
+-            converter = tf.lite.TFLiteConverter(frozen_graph, input_tensors=inputs.values(), output_tensors=outputs.values())
+-            converter.post_training_quantize = True
+-            # AudioSpectrogram and Mfcc ops are custom but have built-in kernels in TFLite
+-            converter.allow_custom_ops = True
+-            tflite_model = converter.convert()
+-
+-            with open(output_tflite_path, 'wb') as fout:
+-                fout.write(tflite_model)
+-
+-            log_info('Exported model for TF Lite engine as {}'.format(os.path.basename(output_tflite_path)))
+-
++        
+         log_info('Models exported at %s' % (FLAGS.export_dir))
+     except RuntimeError as e:
+         log_error(str(e))
