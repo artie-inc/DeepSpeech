@@ -64,8 +64,6 @@ def create_overlapping_windows(batch_x):
 
     return batch_x
 
-
-
 def dense(name, x, units, dropout_rate=None, relu=True):
     with tfv1.variable_scope(name):
         bias = variable_on_cpu('bias', [units], tfv1.zeros_initializer())
@@ -109,6 +107,26 @@ def rnn_impl_cudnn_rnn(x, seq_length, previous_state):
 rnn_impl_cudnn_rnn.cell = None
 
 
+def rnn_impl_cudnn_compatible_rnn(x, seq_length, previous_state):
+    '''
+    Mike's version of LSTM layer for cuda compatibility
+    '''
+
+    fw_cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_units=Config.n_cell_dim,
+                                                               #forget_bias=0,
+                                                               # dtype=tf.float32,
+                                                               # use_peepholes=False,
+                                                               state_is_tuple=False)
+                                                               #)
+    rnn_impl_cudnn_compatible_rnn.cell = fw_cell
+    
+    # x = tf.zeros([1,x.shape[2]])
+    # previous_state = [x,x]
+    output_seqs, states = rnn_impl_cudnn_compatible_rnn.cell(x, previous_state)
+
+    return output_seqs, states
+
+
 def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, previous_state=None, overlap=True):
     layers = {}
 
@@ -141,7 +159,9 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
 
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
-    output, output_state = rnn_impl_cudnn_rnn(layer_3, seq_length, previous_state)
+    rnn_impl=rnn_impl_cudnn_compatible_rnn
+    #rnn_impl=rnn_impl_cudnn_compatible_rnn
+    output, output_state = rnn_impl(layer_3, seq_length, previous_state)
 
     # Reshape output from a tensor of shape [n_steps, batch_size, n_cell_dim]
     # to a tensor of shape [n_steps*batch_size, n_cell_dim]
@@ -259,7 +279,9 @@ def export():
     log_info('Exporting the model...')
     from tensorflow.python.framework.ops import Tensor, Operation
 
-    inputs, outputs, _ = create_inference_graph(batch_size=FLAGS.export_batch_size, n_steps=FLAGS.n_steps, tflite=FLAGS.export_tflite)
+    inputs, outputs, _ = create_inference_graph(batch_size=FLAGS.export_batch_size,
+                                                n_steps=FLAGS.n_steps,
+                                                tflite=FLAGS.export_tflite)
     output_names_tensors = [tensor.op.name for tensor in outputs.values() if isinstance(tensor, Tensor)]
     output_names_ops = [op.name for op in outputs.values() if isinstance(op, Operation)]
     output_names = ",".join(output_names_tensors + output_names_ops)
@@ -271,20 +293,20 @@ def export():
     #     return name
     def fixup(name):
         if name.startswith('cudnn_lstm/'):
-            return name.replace('cudnn_lstm/', 'lstm_fused_cell/')
+            return name.replace('cudnn_lstm/', 'lstm_fused_cell/').replace('opaque_kernel', 'kernel')
         return name
  
     map2 = {v.op.name: v for v in tfv1.global_variables()}
-    print(map2)
+    print("#### map2 ####")
+    for i in map2.items():
+        print(i)
     mapping = {fixup(v.op.name): v for v in tfv1.global_variables()}
-    print(mapping)
+    print("#### mapping ####")
+    for i in mapping.items():
+        print(i)
     saver = tfv1.train.Saver(mapping)
     # saver = tfv1.train.Saver()
-
-
-
-
-
+    
     # Restore variables from training checkpoint
     checkpoint = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
     # print(checkpoint)
@@ -293,9 +315,9 @@ def export():
 
     reader = pywrap_tensorflow.NewCheckpointReader(checkpoint_path)
     var_to_shape_map = reader.get_variable_to_shape_map()
-    print(var_to_shape_map)
-
-
+    print("#### var_to_shape_map ####")
+    for i in var_to_shape_map.items():
+        print(i)
 
     output_filename = 'output_graph.pb'
     if FLAGS.remove_export:
@@ -327,28 +349,45 @@ def export():
                 input_node_names=input_node_names,
                 output_node_names=output_node_names.split(','),
                 placeholder_type_enum=tf.float32.as_datatype_enum)
-
+        
         frozen_graph = do_graph_freeze(output_node_names=output_names)
-        frozen_graph.version = int(file_relative_read('GRAPH_VERSION').strip())
+        # frozen_graph.version = int(file_relative_read('GRAPH_VERSION').strip())
+        # # Add a no-op node to the graph with metadata information to be loaded by the native client
+        # metadata = frozen_graph.node.add()
+        # metadata.name = 'model_metadata'
+        # metadata.op = 'NoOp'
+        # metadata.attr['sample_rate'].i = FLAGS.audio_sample_rate
+        # metadata.attr['feature_win_len'].i = FLAGS.feature_win_len
+        # metadata.attr['feature_win_step'].i = FLAGS.feature_win_step
+
+        ### WORKING BLOCK ###
+        # from tensorflow.contrib import tensorrt as trt
+        # trt_graph = trt.create_inference_graph(
+        #     input_graph_def=frozen_graph,  # frozen model
+        #     outputs=['logits'],
+        #     max_batch_size=512,  # specify your max batch size
+        #     max_workspace_size_bytes=2 * (10 ** 9),  # specify the max workspace
+        #     precision_mode="FP16")  # precision, can be "FP32" (32 floating point precision) or "FP16" .
+
+        from tensorflow.python.compiler.tensorrt import trt_convert as trt
+        converter = trt.TrtGraphConverter(
+            input_graph_def=frozen_graph,  # frozen model
+            nodes_blacklist=['logits'],
+            max_batch_size=512,  # specify your max batch size
+            max_workspace_size_bytes=2 * (10 ** 9),  # specify the max workspace
+            precision_mode="FP16")  # precision, can be "FP32" or "FP16" or "INT8" .
+
+        trt_graph = converter.convert()
+        # write the TensorRT model to be used later for inference
+        with tf.io.gfile.GFile("/home/ubuntu/trt_output_graph.pb", 'wb') as g:
+            g.write(trt_graph.SerializeToString())
             
-        # Add a no-op node to the graph with metadata information to be loaded by the native client
-        metadata = frozen_graph.node.add()
-        metadata.name = 'model_metadata'
-        metadata.op = 'NoOp'
-        metadata.attr['sample_rate'].i = FLAGS.audio_sample_rate
-        metadata.attr['feature_win_len'].i = FLAGS.feature_win_len
-        metadata.attr['feature_win_step'].i = FLAGS.feature_win_step
-        if FLAGS.export_language:
-            metadata.attr['language'].s = FLAGS.export_language.encode('ascii')
-            
-        with open(output_graph_path, 'wb') as fout:
-            fout.write(frozen_graph.SerializeToString())
+        # with open(output_graph_path, 'wb') as fout:
+        #     fout.write(frozen_graph.SerializeToString())
         
         log_info('Models exported at %s' % (FLAGS.export_dir))
     except RuntimeError as e:
         log_error(str(e))
-
-
 
 
 def exportTensorRTEngine():
