@@ -230,6 +230,24 @@ def create_trt_graph(graph_def, output_graph_path):
         g.write(trt_graph.SerializeToString())
     return trt_graph
 
+def convert_to_trt_graph(frozen_graph, output_graph_path):
+    from tensorflow.python.compiler.tensorrt import trt_convert as trt
+    converter = trt.TrtGraphConverter(
+        input_graph_def=frozen_graph,  # frozen model
+        nodes_blacklist=['logits'],
+        minimum_segment_size=6,
+        max_batch_size=512,  # specify your max batch size
+        max_workspace_size_bytes=2 * (10 ** 9),  # specify the max workspace
+        precision_mode="FP16")  # precision, can be "FP32" or "FP16" or "INT8" .
+
+    trt_graph = converter.convert()
+    # write the TensorRT model to be used later for inference
+    # tf.io.write_graph(trt_graph, "/home/ubuntu/", "trt_output_graph.pbtxt") 
+    # exit()    
+    with tf.io.gfile.GFile(output_graph_path, 'wb') as g:
+        g.write(trt_graph.SerializeToString())
+        
+
 def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, previous_state=None, overlap=True, rnn_impl=rnn_impl_lstmblockfusedcell):
     layers = {}
 
@@ -921,7 +939,8 @@ def export():
                 metadata.attr['language'].s = FLAGS.export_language.encode('ascii')
 
             if FLAGS.export_tensorrt_engine:
-                trt_graph = create_trt_graph(frozen_graph, output_graph_path)
+                # trt_graph = create_trt_graph(frozen_graph, output_graph_path)
+                trt_graph = convert_to_trt_graph(frozen_graph, output_graph_path)
             else:
                 metadata.attr['sample_rate'].i = FLAGS.audio_sample_rate
                 metadata.attr['feature_win_len'].i = FLAGS.feature_win_len
