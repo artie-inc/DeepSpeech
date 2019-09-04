@@ -159,7 +159,7 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
 
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
-    rnn_impl=rnn_impl_cudnn_compatible_rnn
+    rnn_impl=rnn_impl_cudnn_rnn
     #rnn_impl=rnn_impl_cudnn_compatible_rnn
     output, output_state = rnn_impl(layer_3, seq_length, previous_state)
 
@@ -373,12 +373,15 @@ def export():
         converter = trt.TrtGraphConverter(
             input_graph_def=frozen_graph,  # frozen model
             nodes_blacklist=['logits'],
+            minimum_segment_size=6,
             max_batch_size=512,  # specify your max batch size
             max_workspace_size_bytes=2 * (10 ** 9),  # specify the max workspace
             precision_mode="FP16")  # precision, can be "FP32" or "FP16" or "INT8" .
 
         trt_graph = converter.convert()
         # write the TensorRT model to be used later for inference
+        # tf.io.write_graph(trt_graph, "/home/ubuntu/", "trt_output_graph.pbtxt") 
+        # exit()    
         with tf.io.gfile.GFile("/home/ubuntu/trt_output_graph.pb", 'wb') as g:
             g.write(trt_graph.SerializeToString())
             

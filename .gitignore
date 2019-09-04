@@ -20,3 +20,4 @@
 /native_client/python/utils_wrap.cpp
 /native_client/javascript/build
 /native_client/javascript/deepspeech_wrap.cxx
+/venv
