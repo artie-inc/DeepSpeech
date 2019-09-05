@@ -82,9 +82,19 @@ def dense(name, x, units, dropout_rate=None, relu=True):
 
 
 
+def rnn_impl_deprecated_basic_rnn(x, seq_length, previous_state):
+    # Forward direction cell:
+    fw_cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=Config.n_cell_dim, dtype=tf.float32)
+    rnn_impl_basic_rnn.cell = fw_cell
+    
+    output, output_state = rnn_impl_basic_rnn.cell(inputs=x[0,:,:],
+                                                   state=previous_state)
+
+    return output, output_state
+
+
 def rnn_impl_basic_rnn(x, seq_length, previous_state):
     # Forward direction cell:
-    print(x.shape)
     fw_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=Config.n_cell_dim,
                                                 dtype=tf.float32)
     rnn_impl_basic_rnn.cell = fw_cell
@@ -93,7 +103,6 @@ def rnn_impl_basic_rnn(x, seq_length, previous_state):
                                                    state=previous_state)
 
     return output, output_state
-
 
 
 
@@ -173,8 +182,9 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
     #rnn_impl=rnn_impl_basic_rnn
-    rnn_impl=rnn_impl_cudnn_rnn
-    rnn_impl=rnn_impl_cudnn_compatible_rnn
+    rnn_impl=rnn_impl_deprecated_basic_rnn
+    #rnn_impl=rnn_impl_cudnn_rnn
+    #rnn_impl=rnn_impl_cudnn_compatible_rnn
     output, output_state = rnn_impl(layer_3, seq_length, previous_state)
 
     # Reshape output from a tensor of shape [n_steps, batch_size, n_cell_dim]
@@ -301,7 +311,7 @@ def export():
     output_names = ",".join(output_names_tensors + output_names_ops)
 
     def fixup(name):
-        for orgName in ['lstm_cell/', 'cudnn_lstm/', 'cudnn_compatible_lstm_cell/']:
+        for orgName in ['basic_lstm_cell/', 'lstm_cell/', 'cudnn_lstm/', 'cudnn_compatible_lstm_cell/']:
             if name.startswith(orgName):
                 return name.replace(orgName, 'lstm_fused_cell/').replace('opaque_kernel', 'kernel')
         return name
@@ -403,33 +413,38 @@ def export():
         log_error(str(e))
 
 
+
+
+
 def exportTensorRTEngine():
     #convert-to-uff frozen_inference_graph.pb
     #model_file = '/data/mnist/mnist.uff'
     model_path = FLAGS.uff_file
-
+    
     TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
 
+    
     with trt.Builder(TRT_LOGGER) as builder, builder.create_network() as network, trt.UffParser() as parser:
+        # with builder = trt.Builder(TRT_LOGGER) as builder, builder.create_network() as network, trt.UffParser() as parser:
         max_batch_size = 3
         builder.max_batch_size = max_batch_size
-        builder.max_workspace_size = 1 <<  20 # This determines the amount of memory available to the builder when building an optimized engine and should generally be set as high as possible.
-
-        # parser.register_input("previous_state_c")#Placeholder
-        # parser.register_input("previous_state_h")#Placeholder
-        # parser.register_input("input_samples")#Placeholder
-
+        # This determines the amount of memory available to the builder when building an optimized engine and should generally be set as high as possible.
+        builder.max_workspace_size = 1 <<  20
+        
+        parser.register_input("previous_state_c")#Placeholder
+        parser.register_input("previous_state_h")#Placeholder
+        parser.register_input("input_samples")#Placeholder
+        
         parser.register_output("logits")#softmax
         parser.register_output("new_state_c")#Identity
         parser.register_output("new_state_h")#identity
         parser.register_output("mfccs")#identity
         parser.parse(model_path, network)
-
+        
         with builder.build_cuda_engine(network) as engine:
             with open("output_graph_trt.engine", "wb") as f:
-                    f.write(engine.serialize())            
-    # Do inference here.
-
+                f.write(engine.serialize())
+                # Do inference here.
 
 
 def main(_):
@@ -439,9 +454,8 @@ def main(_):
         tfv1.reset_default_graph()
         export()
 
-
-    # if FLAGS.export_tensorrt_engine:
-    #     exportTensorRTEngine()
+    if FLAGS.export_tensorrt_engine:
+        exportTensorRTEngine()
 
 if __name__ == '__main__':
     create_flags()

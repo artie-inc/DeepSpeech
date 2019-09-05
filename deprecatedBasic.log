@@ -1,0 +1,322 @@
+WARNING:tensorflow:From /home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/conversion_helpers.py:18: The name tf.GraphDef is deprecated. Please use tf.compat.v1.GraphDef instead.
+
+WARNING:tensorflow:From /home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/conversion_helpers.py:231: The name tf.gfile.GFile is deprecated. Please use tf.io.gfile.GFile instead.
+
+WARNING:tensorflow:From /home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/graphsurgeon/_utils.py:2: The name tf.NodeDef is deprecated. Please use tf.compat.v1.NodeDef instead.
+
+Loading ../trt_output_graph.pb-deprecatedBasic
+NOTE: UFF has been tested with TensorFlow 1.12.0. Other versions are not guaranteed to work
+WARNING: The version of TensorFlow installed on this system is not guaranteed to work with UFF.
+UFF Version 0.6.3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:130] Debug Mode is ENABLED
+=== Automatically deduced input nodes ===
+[name: "input_samples"
+op: "Placeholder"
+attr {
+  key: "dtype"
+  value {
+    type: DT_FLOAT
+  }
+}
+attr {
+  key: "shape"
+  value {
+    shape {
+      dim {
+        size: 512
+      }
+    }
+  }
+}
+, name: "input_node"
+op: "Placeholder"
+attr {
+  key: "dtype"
+  value {
+    type: DT_FLOAT
+  }
+}
+attr {
+  key: "shape"
+  value {
+    shape {
+      dim {
+        size: 1
+      }
+      dim {
+        size: 16
+      }
+      dim {
+        size: 19
+      }
+      dim {
+        size: 26
+      }
+    }
+  }
+}
+, name: "previous_state_c"
+op: "Placeholder"
+attr {
+  key: "dtype"
+  value {
+    type: DT_FLOAT
+  }
+}
+attr {
+  key: "shape"
+  value {
+    shape {
+      dim {
+        size: 1
+      }
+      dim {
+        size: 2048
+      }
+    }
+  }
+}
+, name: "previous_state_h"
+op: "Placeholder"
+attr {
+  key: "dtype"
+  value {
+    type: DT_FLOAT
+  }
+}
+attr {
+  key: "shape"
+  value {
+    shape {
+      dim {
+        size: 1
+      }
+      dim {
+        size: 2048
+      }
+    }
+  }
+}
+]
+=========================================
+
+=== Automatically deduced output nodes ===
+[name: "logits"
+op: "Softmax"
+input: "raw_logits"
+attr {
+  key: "T"
+  value {
+    type: DT_FLOAT
+  }
+}
+]
+==========================================
+
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:152] Enumerating outputs
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:251] Extracting name information from logits
+Using output node logits
+Converting to UFF graph
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:88] Creating new UFF metagraph: main
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Softmax node logits
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input raw_logits
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node logits with op Softmax, using conversion function: <function convert_softmax at 0x7f52d53b2d08>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Reshape node raw_logits
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input BiasAdd_4
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input raw_logits/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node raw_logits with op Reshape, using conversion function: <function convert_reshape at 0x7f52d53b3158>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node raw_logits/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node raw_logits/shape with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting BiasAdd node BiasAdd_4
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input MatMul_4
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_6/bias/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node BiasAdd_4 with op BiasAdd, using conversion function: <function convert_bias_add at 0x7f52d53b38c8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting MatMul node MatMul_4
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_6/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node MatMul_4 with op MatMul, using conversion function: <function convert_matmul at 0x7f52d53b3598>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node layer_6/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node layer_6/weights/read with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Minimum node Minimum_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Relu_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum_3/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum_3 with op Minimum, using conversion function: <function convert_minimum at 0x7f52d53b2d90>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node Minimum_3/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum_3/y with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Relu node Relu_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input BiasAdd_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Relu_3 with op Relu, using conversion function: <function convert_relu at 0x7f52d53a6d08>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting BiasAdd node BiasAdd_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input MatMul_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_5/bias/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node BiasAdd_3 with op BiasAdd, using conversion function: <function convert_bias_add at 0x7f52d53b38c8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting MatMul node MatMul_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Reshape_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_5/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node MatMul_3 with op MatMul, using conversion function: <function convert_matmul at 0x7f52d53b3598>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node layer_5/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node layer_5/weights/read with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>WARNING:tensorflow:From /home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:179: The name tf.AttrValue is deprecated. Please use tf.compat.v1.AttrValue instead.
+
+
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Reshape node Reshape_3
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Mul_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Reshape_3/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Reshape_3 with op Reshape, using conversion function: <function convert_reshape at 0x7f52d53b3158>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node Reshape_3/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Reshape_3/shape with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Mul node basic_lstm_cell/Mul_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Tanh_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Sigmoid_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Mul_2 with op Mul, using conversion function: <function convert_mul at 0x7f52d53a6bf8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Sigmoid node basic_lstm_cell/Sigmoid_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/split
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Sigmoid_2 with op Sigmoid, using conversion function: <function convert_sigmoid at 0x7f52d53a6ea0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Split node basic_lstm_cell/split
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Const
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/BiasAdd
+Warning: No conversion function registered for layer: Split yet.
+Converting basic_lstm_cell/split as custom op: Split
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting BiasAdd node basic_lstm_cell/BiasAdd
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/MatMul
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/bias/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/BiasAdd with op BiasAdd, using conversion function: <function convert_bias_add at 0x7f52d53b38c8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting MatMul node basic_lstm_cell/MatMul
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/concat
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/kernel/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/MatMul with op MatMul, using conversion function: <function convert_matmul at 0x7f52d53b3598>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node basic_lstm_cell/kernel/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/kernel/read with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting ConcatV2 node basic_lstm_cell/concat
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input strided_slice_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input previous_state_h
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/concat/axis
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/concat with op ConcatV2, using conversion function: <function convert_concatv2 at 0x7f52d53b32f0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Placeholder node previous_state_h
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node previous_state_h with op Placeholder, using conversion function: <function convert_placeholder at 0x7f52d54c61e0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting StridedSlice node strided_slice_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Reshape_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input strided_slice_1/stack
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input strided_slice_1/stack_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input strided_slice_1/stack_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node strided_slice_1 with op StridedSlice, using conversion function: <function convert_strided_slice at 0x7f52d53b39d8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node strided_slice_1/stack_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node strided_slice_1/stack_2 with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node strided_slice_1/stack_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node strided_slice_1/stack_1 with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node strided_slice_1/stack
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node strided_slice_1/stack with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Reshape node Reshape_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Reshape_2/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Reshape_2 with op Reshape, using conversion function: <function convert_reshape at 0x7f52d53b3158>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node Reshape_2/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Reshape_2/shape with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Minimum node Minimum_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Relu_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum_2/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum_2 with op Minimum, using conversion function: <function convert_minimum at 0x7f52d53b2d90>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node Minimum_2/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum_2/y with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Relu node Relu_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input BiasAdd_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Relu_2 with op Relu, using conversion function: <function convert_relu at 0x7f52d53a6d08>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting BiasAdd node BiasAdd_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input MatMul_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_3/bias/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node BiasAdd_2 with op BiasAdd, using conversion function: <function convert_bias_add at 0x7f52d53b38c8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting MatMul node MatMul_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_3/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node MatMul_2 with op MatMul, using conversion function: <function convert_matmul at 0x7f52d53b3598>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node layer_3/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node layer_3/weights/read with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Minimum node Minimum_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Relu_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum_1/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum_1 with op Minimum, using conversion function: <function convert_minimum at 0x7f52d53b2d90>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node Minimum_1/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum_1/y with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Relu node Relu_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input BiasAdd_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Relu_1 with op Relu, using conversion function: <function convert_relu at 0x7f52d53a6d08>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting BiasAdd node BiasAdd_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input MatMul_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_2/bias/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node BiasAdd_1 with op BiasAdd, using conversion function: <function convert_bias_add at 0x7f52d53b38c8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting MatMul node MatMul_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_2/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node MatMul_1 with op MatMul, using conversion function: <function convert_matmul at 0x7f52d53b3598>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node layer_2/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node layer_2/weights/read with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Minimum node Minimum
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Relu
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Minimum/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum with op Minimum, using conversion function: <function convert_minimum at 0x7f52d53b2d90>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node Minimum/y
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Minimum/y with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Relu node Relu
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input BiasAdd
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Relu with op Relu, using conversion function: <function convert_relu at 0x7f52d53a6d08>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting BiasAdd node BiasAdd
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input MatMul
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_1/bias/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node BiasAdd with op BiasAdd, using conversion function: <function convert_bias_add at 0x7f52d53b38c8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting MatMul node MatMul
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Reshape_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input layer_1/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node MatMul with op MatMul, using conversion function: <function convert_matmul at 0x7f52d53b3598>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node layer_1/weights/read
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node layer_1/weights/read with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Reshape node Reshape_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input transpose
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input Reshape_1/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Reshape_1 with op Reshape, using conversion function: <function convert_reshape at 0x7f52d53b3158>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node Reshape_1/shape
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node Reshape_1/shape with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Transpose node transpose
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input input_node
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input transpose/perm
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node transpose with op Transpose, using conversion function: <function convert_transpose at 0x7f52d53b31e0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Placeholder node input_node
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node input_node with op Placeholder, using conversion function: <function convert_placeholder at 0x7f52d54c61e0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node basic_lstm_cell/Const
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Const with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Tanh node basic_lstm_cell/Tanh_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Add_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Tanh_1 with op Tanh, using conversion function: <function convert_tanh at 0x7f52d53a6e18>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Add node basic_lstm_cell/Add_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Mul
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Mul_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Add_1 with op Add, using conversion function: <function convert_add at 0x7f52d53a6ae8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Mul node basic_lstm_cell/Mul_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Sigmoid_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Tanh
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Mul_1 with op Mul, using conversion function: <function convert_mul at 0x7f52d53a6bf8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Tanh node basic_lstm_cell/Tanh
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/split
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Tanh with op Tanh, using conversion function: <function convert_tanh at 0x7f52d53a6e18>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:53] basic_lstm_cell/split already in UFF graph, skipping.
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Sigmoid node basic_lstm_cell/Sigmoid_1
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/split
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Sigmoid_1 with op Sigmoid, using conversion function: <function convert_sigmoid at 0x7f52d53a6ea0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:53] basic_lstm_cell/split already in UFF graph, skipping.
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Mul node basic_lstm_cell/Mul
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input previous_state_c
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Sigmoid
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Mul with op Mul, using conversion function: <function convert_mul at 0x7f52d53a6bf8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Sigmoid node basic_lstm_cell/Sigmoid
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Add
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Sigmoid with op Sigmoid, using conversion function: <function convert_sigmoid at 0x7f52d53a6ea0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Add node basic_lstm_cell/Add
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/split
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:71] Found input basic_lstm_cell/Const_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Add with op Add, using conversion function: <function convert_add at 0x7f52d53a6ae8>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Const node basic_lstm_cell/Const_2
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node basic_lstm_cell/Const_2 with op Const, using conversion function: <function convert_const at 0x7f52d53a6a60>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:53] basic_lstm_cell/split already in UFF graph, skipping.
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:66] Converting Placeholder node previous_state_c
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:46] For node previous_state_c with op Placeholder, using conversion function: <function convert_placeholder at 0x7f52d54c61e0>
+DEBUG [/home/ubuntu/deepspeech/venv/lib/python3.6/site-packages/uff/converters/tensorflow/converter.py:96] Marking ['logits'] as outputs
+No. nodes: 68
+UFF Output written to ../trt_output_graph.uff
