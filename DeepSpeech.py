@@ -840,7 +840,8 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
         'outputs': logits,
         'new_state_c': new_state_c,
         'new_state_h': new_state_h,
-        'mfccs': mfccs,
+        # When this is uncommented errors happen finding mfcc in the graph 
+        # 'mfccs': mfccs,
     }
 
     return inputs, outputs, layers
