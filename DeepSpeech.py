@@ -129,17 +129,13 @@ def rnn_impl_cudnn_compatible_rnn(x, seq_length, previous_state):
     Mike's version of LSTM layer for cuda compatibility
     '''
 
-    fw_cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_units=Config.n_cell_dim,
-                                                               #forget_bias=0,
-                                                               # dtype=tf.float32,
-                                                               # use_peepholes=False,
-                                                               state_is_tuple=False)
-                                                               #)
+    fw_cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_units=Config.n_cell_dim)
+                                                               
     rnn_impl_cudnn_compatible_rnn.cell = fw_cell
     
     # x = tf.zeros([1,x.shape[2]])
     # previous_state = [x,x]
-    output_seqs, states = rnn_impl_cudnn_compatible_rnn.cell(x, previous_state)
+    output_seqs, states = rnn_impl_cudnn_compatible_rnn.cell(x[0,:,:], previous_state)
 
     return output_seqs, states
 
@@ -176,8 +172,9 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
 
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
-    rnn_impl=rnn_impl_basic_rnn
-    #rnn_impl=rnn_impl_cudnn_compatible_rnn
+    #rnn_impl=rnn_impl_basic_rnn
+    rnn_impl=rnn_impl_cudnn_rnn
+    rnn_impl=rnn_impl_cudnn_compatible_rnn
     output, output_state = rnn_impl(layer_3, seq_length, previous_state)
 
     # Reshape output from a tensor of shape [n_steps, batch_size, n_cell_dim]
@@ -303,14 +300,10 @@ def export():
     output_names_ops = [op.name for op in outputs.values() if isinstance(op, Operation)]
     output_names = ",".join(output_names_tensors + output_names_ops)
 
-    # Create a saver using variables from the above newly created graph
-    # def fixup(name):
-    #     if name.startswith('cudnn_compatible_lstm_cell/'):
-    #         return name.replace('cudnn_compatible_lstm_cell/', 'lstm_fused_cell/')
-    #     return name
     def fixup(name):
-        if name.startswith('lstm_cell/'):
-            return name.replace('lstm_cell/', 'lstm_fused_cell/').replace('opaque_kernel', 'kernel')
+        for orgName in ['lstm_cell/', 'cudnn_lstm/', 'cudnn_compatible_lstm_cell/']:
+            if name.startswith(orgName):
+                return name.replace(orgName, 'lstm_fused_cell/').replace('opaque_kernel', 'kernel')
         return name
  
     map2 = {v.op.name: v for v in tfv1.global_variables()}
