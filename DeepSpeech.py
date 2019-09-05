@@ -80,6 +80,23 @@ def dense(name, x, units, dropout_rate=None, relu=True):
     return output
 
 
+
+
+def rnn_impl_basic_rnn(x, seq_length, previous_state):
+    # Forward direction cell:
+    print(x.shape)
+    fw_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=Config.n_cell_dim,
+                                                dtype=tf.float32)
+    rnn_impl_basic_rnn.cell = fw_cell
+    
+    output, output_state = rnn_impl_basic_rnn.cell(inputs=x[0,:,:],
+                                                   state=previous_state)
+
+    return output, output_state
+
+
+
+
 def rnn_impl_cudnn_rnn(x, seq_length, previous_state):
     # assert previous_state is None # 'Passing previous state not supported with CuDNN backend'
     
@@ -159,7 +176,7 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
 
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
-    rnn_impl=rnn_impl_cudnn_rnn
+    rnn_impl=rnn_impl_basic_rnn
     #rnn_impl=rnn_impl_cudnn_compatible_rnn
     output, output_state = rnn_impl(layer_3, seq_length, previous_state)
 
@@ -292,8 +309,8 @@ def export():
     #         return name.replace('cudnn_compatible_lstm_cell/', 'lstm_fused_cell/')
     #     return name
     def fixup(name):
-        if name.startswith('cudnn_lstm/'):
-            return name.replace('cudnn_lstm/', 'lstm_fused_cell/').replace('opaque_kernel', 'kernel')
+        if name.startswith('lstm_cell/'):
+            return name.replace('lstm_cell/', 'lstm_fused_cell/').replace('opaque_kernel', 'kernel')
         return name
  
     map2 = {v.op.name: v for v in tfv1.global_variables()}
