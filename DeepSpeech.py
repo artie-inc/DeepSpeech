@@ -28,7 +28,6 @@ from util.feeding import create_dataset, samples_to_mfccs, audiofile_to_features
 from util.flags import create_flags, FLAGS
 from util.logging import log_info, log_error, log_debug, log_progress, create_progressbar
 
-
 # Graph Creation
 # ==============
 
@@ -431,9 +430,9 @@ def exportTensorRTEngine():
         # This determines the amount of memory available to the builder when building an optimized engine and should generally be set as high as possible.
         builder.max_workspace_size = 1 <<  20
         
-        parser.register_input("previous_state_c")#Placeholder
-        parser.register_input("previous_state_h")#Placeholder
-        parser.register_input("input_samples")#Placeholder
+        parser.register_input("previous_state_c", [2048])#Placeholder
+        parser.register_input("previous_state_h", [2048])#Placeholder
+        parser.register_input("input_samples", [512])#Placeholder
         
         parser.register_output("logits")#softmax
         parser.register_output("new_state_c")#Identity
@@ -445,7 +444,7 @@ def exportTensorRTEngine():
             with open("output_graph_trt.engine", "wb") as f:
                 f.write(engine.serialize())
                 # Do inference here.
-
+    
 
 def main(_):
     initialize_globals()
