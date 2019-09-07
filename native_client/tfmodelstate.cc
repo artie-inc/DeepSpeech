@@ -33,6 +33,7 @@ TFModelState::init(const char* model_path,
                    const char* alphabet_path,
                    unsigned int beam_width)
 {
+  cout << "TFModelState::init ~~~~~~~~~~~~~~~~~~~";
   int err = ModelState::init(model_path, n_features, n_context, alphabet_path, beam_width);
   if (err != DS_ERR_OK) {
     return err;
@@ -59,6 +60,7 @@ TFModelState::init(const char* model_path,
     options.env = mmap_env_;
   }
 
+  cout << "TFModelState::init NewSession++++++++++++++++++++++++\n";
   status = NewSession(options, &session_);
   if (!status.ok()) {
     std::cerr << status << std::endl;
@@ -77,13 +79,18 @@ TFModelState::init(const char* model_path,
     return DS_ERR_FAIL_READ_PROTOBUF;
   }
 
+  cout << "TFModelState::init Create++++++++++++++++++++++++\n";
   status = session_->Create(graph_def_);
+  cout << "TFModelState::init Create-Completed*************\n";
   if (!status.ok()) {
+    cout << "TFModelState::init status NOT OK*************\n";
     std::cerr << status << std::endl;
     return DS_ERR_FAIL_CREATE_SESS;
   }
 
+  cout << "TFModelState::init version++++++++++++++++++++++++\n";
   int graph_version = graph_def_.version();
+  cout << "TFModelState::init version222++++++++++++++++++++++++\n";
   if (graph_version < ds_graph_version()) {
     std::cerr << "Specified model file version (" << graph_version << ") is "
               << "incompatible with minimum version supported by this client ("
@@ -93,8 +100,10 @@ TFModelState::init(const char* model_path,
     return DS_ERR_MODEL_INCOMPATIBLE;
   }
 
+  cout << "PROCESSING!!!!";
   for (int i = 0; i < graph_def_.node_size(); ++i) {
     NodeDef node = graph_def_.node(i);
+    cout << "processing:" << node.name() << "\n";
     if (node.name() == "input_node") {
       const auto& shape = node.attr().at("shape").shape();
       n_steps_ = shape.dim(1).size();

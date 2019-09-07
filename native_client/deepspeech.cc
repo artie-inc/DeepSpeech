@@ -346,11 +346,19 @@ DS_EnableDecoderWithLM(ModelState* aCtx,
                        float aLMAlpha,
                        float aLMBeta)
 {
+  cout << "enableDecoderWithLM start\n";
+  // Scorer* scorer = new Scorer();
+  cout << "enableDecoderWithLM created Scorer\n";
+  // cout << aCtx.
+  // printf("%d", aCtx->scorer_);
+  // aCtx->scorer_.reset(scorer);
   aCtx->scorer_.reset(new Scorer());
+  cout << "enableDecoderWithLM scorerReset\n";
   int err = aCtx->scorer_->init(aLMAlpha, aLMBeta,
                                 aLMPath ? aLMPath : "",
                                 aTriePath ? aTriePath : "",
                                 aCtx->alphabet_);
+  cout << "enableDecoderWithLM scorer initialized\n";                                
   if (err != 0) {
     return DS_ERR_INVALID_LM;
   }
@@ -362,31 +370,57 @@ DS_SetupStream(ModelState* aCtx,
                unsigned int aSampleRate,
                StreamingState** retval)
 {
+  // cout << retval;
+  // cout << "setupStream start\n";
+  // cout << "setupStream 2\n";
+  // printf("%d\n", retval);
+  // if(retval)
+  //   cout << "retval\n";
+  // else
+  //   cout << "not retval\n";
+  // try {
   *retval = nullptr;
-
+  // }
+  // catch(int e) {
+  //   cout << "An exception occurred. Exception Nr. " << e << '\n';
+  // }
+  // cout << "setupStream after retvalset\n";
   std::unique_ptr<StreamingState> ctx(new StreamingState());
+  // cout << "setupStream after ctx\n";
   if (!ctx) {
     std::cerr << "Could not allocate streaming state." << std::endl;
     return DS_ERR_FAIL_CREATE_STREAM;
   }
 
+  cout << "setupStream initializing ctx props\n";
+
   ctx->audio_buffer_.reserve(aCtx->audio_win_len_);
+  cout << "setupStream reserving mfcc_buffer\n";
   ctx->mfcc_buffer_.reserve(aCtx->mfcc_feats_per_timestep_);
+  cout << "setupStream resizing mfcc_buffer\n";
   ctx->mfcc_buffer_.resize(aCtx->n_features_*aCtx->n_context_, 0.f);
+  cout << "setupStream reserving batch_buffer\n";
   ctx->batch_buffer_.reserve(aCtx->n_steps_ * aCtx->mfcc_feats_per_timestep_);
+  cout << "setupStream resizing previous_state_c\n";
+  cout << "setupStream REALLY REALLY REALLY \n";
+  cout << aCtx;
+  cout << aCtx->state_size_;
   ctx->previous_state_c_.resize(aCtx->state_size_, 0.f);
+  cout << "setupStream resizing previous_state_h\n";
   ctx->previous_state_h_.resize(aCtx->state_size_, 0.f);
+  cout << "setupStream assigning aCtx to ctx->model\n";
   ctx->model_ = aCtx;
 
   const int cutoff_top_n = 40;
   const double cutoff_prob = 1.0;
 
+  cout << "setupStream initing\n";
   ctx->decoder_state_.init(aCtx->alphabet_,
                            aCtx->beam_width_,
                            cutoff_prob,
                            cutoff_top_n,
                            aCtx->scorer_.get());
-
+  cout << "setupStream init complete\n";
   *retval = ctx.release();
   return DS_ERR_OK;
 }
