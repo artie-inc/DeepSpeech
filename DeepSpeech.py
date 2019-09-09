@@ -181,9 +181,10 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
     #rnn_impl=rnn_impl_basic_rnn
-    rnn_impl=rnn_impl_deprecated_basic_rnn
-    #rnn_impl=rnn_impl_cudnn_rnn
-    #rnn_impl=rnn_impl_cudnn_compatible_rnn
+    # rnn_impl=rnn_impl_deprecated_basic_rnn
+    rnn_impl=rnn_impl_cudnn_rnn
+    # rnn_impl=rnn_impl_cudnn_compatible_rnn
+  
     output, output_state = rnn_impl(layer_3, seq_length, previous_state)
 
     # Reshape output from a tensor of shape [n_steps, batch_size, n_cell_dim]
@@ -395,13 +396,13 @@ def export():
             minimum_segment_size=6,
             max_batch_size=512,  # specify your max batch size
             max_workspace_size_bytes=2 * (10 ** 9),  # specify the max workspace
-            precision_mode="FP16")  # precision, can be "FP32" or "FP16" or "INT8" .
+            precision_mode="FP32")  # precision, can be "FP32" or "FP16" or "INT8" .
 
         trt_graph = converter.convert()
         # write the TensorRT model to be used later for inference
         # tf.io.write_graph(trt_graph, "/home/ubuntu/", "trt_output_graph.pbtxt") 
         # exit()    
-        with tf.io.gfile.GFile("/home/ubuntu/trt_output_graph.pb", 'wb') as g:
+        with tf.io.gfile.GFile(output_graph_path, 'wb') as g:
             g.write(trt_graph.SerializeToString())
             
         # with open(output_graph_path, 'wb') as fout:
