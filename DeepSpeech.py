@@ -15,6 +15,7 @@ import shutil
 import tensorflow as tf
 import tensorflow.compat.v1 as tfv1
 import time
+import os
 
 from datetime import datetime
 from ds_ctcdecoder import ctc_beam_search_decoder, Scorer
@@ -183,15 +184,42 @@ rnn_impl_cudnn_compatible_rnn.cell = None
 
 def rnn_impl_cudnn_compat_with_multi_rnn(x, seq_length, previous_state, reuse):
     # inputs    = tf.placeholder(tf.float32, [1, 2048,2048], name="inputs")
-    inputs    = tf.placeholder(tf.float32, [None, None, 32], name="inputs")
+    # inputs    = tf.placeholder(tf.float32, [None, None, 32], name="inputs")
     # x = tf.constant(0.0, shape=[1, 2048])
     with tf.variable_scope("cudnn_lstm"):
+        print("n_cell_dim=%s", Config.n_cell_dim)
+
         single_cell = lambda: tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(Config.n_cell_dim, reuse=reuse)
+
+        # initial_state = rnn_impl_cudnn_compatible_rnn.cell.zero_state(1, tf.float32)
+
+
+
         # cell = tf.nn.rnn_cell.MultiRNNCell([single_cell() for _ in range(num_layers)])
         cell = tf.nn.rnn_cell.MultiRNNCell([single_cell()])
-        # outputs, final_state = tf.nn.dynamic_rnn(cell, x,dtype=tf.float32)
-        output_seqs, states = tf.contrib.rnn.static_rnn(cell, inputs,
-                                                    dtype=tf.float32)
+
+        print("previous_state={}".format(previous_state))
+        print("len(previous_state)={}".format(len(previous_state)))
+        # print(tf.shape(previous_state))
+        print("x={}".format(x))
+        # x=[x[1],x[2]]
+        x = [x[1]]
+        print("after x={}".format(x))
+        # exit()
+        # print(cell._cells)
+        # output_seqs, states = tf.nn.dynamic_rnn(cell, x,dtype=tf.float32, initial_state=previous_state)
+
+        previous_state_tuple = (previous_state,)
+        print("prev_state_tuple={}".format(previous_state_tuple))
+
+        # output_seqs, states = tf.nn.dynamic_rnn(cell, x,dtype=tf.float32, initial_state=previous_state_tuple)
+        output_seqs, (states,) = tf.nn.static_rnn(cell, x,dtype=tf.float32, initial_state=previous_state_tuple)
+
+        # output_seqs, states = tf.contrib.rnn.static_rnn(cell, inputs, dtype=tf.float32)
+        print("RNN OUTPUT SEQS={}".format(output_seqs))
+        print("RNN OUTPUT STATES={}".format(states))
+
+        # states = states[0]
 
         return output_seqs, states
 
@@ -785,15 +813,15 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
         rnn_impl = rnn_impl_lstmblockfusedcell
 
     # rnn_impl = rnn_impl_cudnn_compatible_rnn
-    # rnn_impl = rnn_impl_cudnn_compat_with_multi_rnn
+    rnn_impl = rnn_impl_cudnn_compat_with_multi_rnn
     # rnn_impl = rnn_impl_cudnn_rnn
-    rnn_impl = rnn_impl_cudnn_compatible_lstm_cell
+    # rnn_impl = rnn_impl_cudnn_compatible_lstm_cell
 
     logits, layers = create_model(batch_x=input_tensor,
                                   batch_size=batch_size,
                                   seq_length=seq_length if not FLAGS.export_tflite else None,
                                   dropout=no_dropout,
-                                #   previous_state=previous_state,
+                                  previous_state=previous_state,
                                   overlap=False,
                                   rnn_impl=rnn_impl)
 
@@ -865,9 +893,12 @@ def export():
 
     # Create a saver using variables from the above newly created graph
     def fixup(name):
-        if name.startswith('cudnn_compatible_lstm_cell/'):
-            return name.replace('cudnn_compatible_lstm_cell/', 'lstm_fused_cell/')
+        prefixes = ['cudnn_compatible_lstm_cell/', "cudnn_lstm/rnn/multi_rnn_cell/cell_0/cudnn_compatible_lstm_cell/"]
+        for prefix in prefixes:
+            if name.startswith(prefix):
+                return name.replace(prefix, 'lstm_fused_cell/')
         return name
+
     map2 = {v.op.name: v for v in tfv1.global_variables()}
     print(map2)
     mapping = {fixup(v.op.name): v for v in tfv1.global_variables()}
@@ -1053,11 +1084,12 @@ def exportTensorRTEngine():
         parser.register_output("new_state_c")#Identity
         parser.register_output("new_state_h")#identity
         parser.register_output("mfccs")#identity
-        parser.parse(model_path, network)
+        result = parser.parse(model_path, network)
+        print("result of uffparser:{}".format(result))
 
         with builder.build_cuda_engine(network) as engine:
             with open("output_graph_trt.engine", "wb") as f:
-                    f.write(engine.serialize())            
+                    f.write(engine.serialize())
     # Do inference here.
 
 import tensorflow.python.ops as ops
@@ -1109,5 +1141,6 @@ def main(_):
         exportTensorRTEngine()
 
 if __name__ == '__main__':
+    # print(os.getcwd())
     create_flags()
     absl.app.run(main)
