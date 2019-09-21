@@ -167,6 +167,19 @@ tf_cc_shared_object(
             # And op libs for these ops brought in by dependencies of dependencies to silence unknown OpKernel warnings:
             "//tensorflow/core:dataset_ops_op_lib",  # UnwrapDatasetVariant, WrapDatasetVariant
             "//tensorflow/core:sendrecv_ops_op_lib",  # _HostRecv, _HostSend, _Recv, _Send
+            "//tensorflow/core/kernels/batching_util:basic_batch_scheduler",
+            "//tensorflow/core/kernels/batching_util:shared_batch_scheduler",
+            "//tensorflow/core/kernels/batching_util:batch_scheduler",
+            "//tensorflow/core/kernels/batching_util:periodic_function",
+             "//tensorflow_serving/batching:batching_session",
+             #"//tensorflow_serving/batching:batching_util",
+             #"//tensorflow_serving/servables/tensorflow:serving_session",
+            #"//tensorflow_serving/util:cleanup",
+            #"//tensorflow_serving/util:hash",
+            #"//tensorflow_serving/util:optional",
+            "//tensorflow/core:protos_all_cc",
+            "//tensorflow/core:framework",
+            "//tensorflow/core:lib",
         ],
     }) + if_cuda([
         "//tensorflow/core:core",
