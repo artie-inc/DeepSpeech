@@ -2,7 +2,16 @@
 
 #include "workspace_status.h"
 
+// #include "tensorflow/core/kernels/batching_util/basic_batch_scheduler.h"
+// #include "tensorflow/core/kernels/batching_util/shared_batch_scheduler.h"
+// #include "tensorflow/core/kernels/batching_util/batch_scheduler.h"
+// #include  "tensorflow/core/kernels/batching_util/periodic_function.h"
+
+// #include "tensorflow_serving/batching/batching_session.h"
+
 using namespace tensorflow;
+// using namespace tensorflow::serving;
+
 using std::vector;
 
 TFModelState::TFModelState()
