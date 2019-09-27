@@ -135,51 +135,61 @@ tf_cc_shared_object(
             ### => Trying to be more fine-grained
             ### Use bin/ops_in_graph.py to list all the ops used by a frozen graph.
             ### CPU only build, libdeepspeech.so file size reduced by ~50%
-            "//tensorflow/core/kernels:spectrogram_op",  # AudioSpectrogram
-            "//tensorflow/core/kernels:bias_op",  # BiasAdd
+            #"//tensorflow/core/kernels:spectrogram_op",  # AudioSpectrogram
+            #"//tensorflow/core/kernels:bias_op",  # BiasAdd
             "//tensorflow/contrib/rnn:lstm_ops_kernels",  # BlockLSTM
-            "//tensorflow/core/kernels:cast_op",  # Cast
-            "//tensorflow/core/kernels:concat_op",  # ConcatV2
-            "//tensorflow/core/kernels:constant_op",  # Const, Placeholder
-            "//tensorflow/core/kernels:shape_ops",  # ExpandDims, Shape
-            "//tensorflow/core/kernels:gather_nd_op",  # GatherNd
-            "//tensorflow/core/kernels:identity_op",  # Identity
-            "//tensorflow/core/kernels:immutable_constant_op",  # ImmutableConst (used in memmapped models)
-            "//tensorflow/core/kernels:deepspeech_cwise_ops",  # Less, Minimum, Mul
-            "//tensorflow/core/kernels:matmul_op",  # MatMul
-            "//tensorflow/core/kernels:reduction_ops",  # Max
-            "//tensorflow/core/kernels:mfcc_op",  # Mfcc
-            "//tensorflow/core/kernels:no_op",  # NoOp
-            "//tensorflow/core/kernels:pack_op",  # Pack
-            "//tensorflow/core/kernels:sequence_ops",  # Range
-            "//tensorflow/core/kernels:relu_op",  # Relu
-            "//tensorflow/core/kernels:reshape_op",  # Reshape
-            "//tensorflow/core/kernels:softmax_op",  # Softmax
-            "//tensorflow/core/kernels:tile_ops",  # Tile
-            "//tensorflow/core/kernels:transpose_op",  # Transpose
+            #"//tensorflow/core/kernels:cast_op",  # Cast
+            #"//tensorflow/core/kernels:concat_op",  # ConcatV2
+            #"//tensorflow/core/kernels:constant_op",  # Const, Placeholder
+            #"//tensorflow/core/kernels:shape_ops",  # ExpandDims, Shape
+            #"//tensorflow/core/kernels:gather_nd_op",  # GatherNd
+            #"//tensorflow/core/kernels:identity_op",  # Identity
+            #"//tensorflow/core/kernels:immutable_constant_op",  # ImmutableConst (used in memmapped models)
+            #"//tensorflow/core/kernels:deepspeech_cwise_ops",  # Less, Minimum, Mul
+            #"//tensorflow/core/kernels:matmul_op",  # MatMul
+            #"//tensorflow/core/kernels:reduction_ops",  # Max
+            #"//tensorflow/core/kernels:mfcc_op",  # Mfcc
+            #"//tensorflow/core/kernels:no_op",  # NoOp
+            #"//tensorflow/core/kernels:pack_op",  # Pack
+            #"//tensorflow/core/kernels:sequence_ops",  # Range
+            #"//tensorflow/core/kernels:relu_op",  # Relu
+            #"//tensorflow/core/kernels:reshape_op",  # Reshape
+            #"//tensorflow/core/kernels:softmax_op",  # Softmax
+            #"//tensorflow/core/kernels:tile_ops",  # Tile
+            #"//tensorflow/core/kernels:transpose_op",  # Transpose
             # And we also need the op libs for these ops used in the model:
-            "//tensorflow/core:audio_ops_op_lib",  # AudioSpectrogram, Mfcc
-            "//tensorflow/contrib/rnn:lstm_ops_op_lib",  # BlockLSTM
-            "//tensorflow/core:math_ops_op_lib",  # Cast, Less, Max, MatMul, Minimum, Range
-            "//tensorflow/core:array_ops_op_lib",  # ConcatV2, Const, ExpandDims, Fill, GatherNd, Identity, Pack, Placeholder, Reshape, Tile, Transpose
-            "//tensorflow/core:no_op_op_lib",  # NoOp
-            "//tensorflow/core:nn_ops_op_lib",  # Relu, Softmax, BiasAdd
+            #"//tensorflow/core:audio_ops_op_lib",  # AudioSpectrogram, Mfcc
+            #"//tensorflow/contrib/rnn:lstm_ops_op_lib",  # BlockLSTM
+            #"//tensorflow/core:math_ops_op_lib",  # Cast, Less, Max, MatMul, Minimum, Range
+            #"//tensorflow/core:array_ops_op_lib",  # ConcatV2, Const, ExpandDims, Fill, GatherNd, Identity, Pack, Placeholder, Reshape, Tile, Transpose
+            #"//tensorflow/core:no_op_op_lib",  # NoOp
+            #"//tensorflow/core:nn_ops_op_lib",  # Relu, Softmax, BiasAdd
             # And op libs for these ops brought in by dependencies of dependencies to silence unknown OpKernel warnings:
-            "//tensorflow/core:dataset_ops_op_lib",  # UnwrapDatasetVariant, WrapDatasetVariant
-            "//tensorflow/core:sendrecv_ops_op_lib",  # _HostRecv, _HostSend, _Recv, _Send
-            "//tensorflow/core/kernels/batching_util:basic_batch_scheduler",
-            "//tensorflow/core/kernels/batching_util:shared_batch_scheduler",
-            "//tensorflow/core/kernels/batching_util:batch_scheduler",
-            "//tensorflow/core/kernels/batching_util:periodic_function",
-             "//tensorflow_serving/batching:batching_session",
-             #"//tensorflow_serving/batching:batching_util",
-             #"//tensorflow_serving/servables/tensorflow:serving_session",
+            #"//tensorflow/core:dataset_ops_op_lib",  # UnwrapDatasetVariant, WrapDatasetVariant
+            #"//tensorflow/core:sendrecv_ops_op_lib",  # _HostRecv, _HostSend, _Recv, _Send
+            
+            
+            # low level batching from tensorflow
+            #"//tensorflow/core/kernels/batching_util:basic_batch_scheduler",
+            #"//tensorflow/core/kernels/batching_util:shared_batch_scheduler",
+            #"//tensorflow/core/kernels/batching_util:batch_scheduler",
+            #"//tensorflow/core/kernels/batching_util:periodic_function",
+            
+            # batching_session all-inclusive target
+            "//tensorflow_serving/batching:batching_session",
+            #"//tensorflow_serving/batching:batching_session_source",
+            
+            # batching_session tensorflow_serving dependencies included directly
+            #"//tensorflow_serving/batching:batching_util",
+            #"//tensorflow_serving/servables/tensorflow:serving_session",
             #"//tensorflow_serving/util:cleanup",
             #"//tensorflow_serving/util:hash",
-            #"//tensorflow_serving/util:optional",
-            "//tensorflow/core:protos_all_cc",
-            "//tensorflow/core:framework",
-            "//tensorflow/core:lib",
+            #"//tensorflow_serving/util:optionalq",
+            
+            # Some tensorflow files that were being included to support my code changes I had made that no longer exist
+            #"//tensorflow/core:protos_all_cc",
+            #"//tensorflow/core:framework",
+            #"//tensorflow/core:lib",
         ],
     }) + if_cuda([
         "//tensorflow/core:core",
