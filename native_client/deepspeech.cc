@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <thread>
+#include <chrono>
 
 #include "deepspeech.h"
 #include "alphabet.h"
@@ -109,6 +111,7 @@ void
 StreamingState::feedAudioContent(const short* buffer,
                                  unsigned int buffer_size)
 {
+  std::cout << std::this_thread::get_id() << " StreamingState::feedAudioContent() start\n";
   // Consume all the data that was passed in, processing full buffers if needed
   while (buffer_size > 0) {
     while (buffer_size > 0 && audio_buffer_.size() < model_->audio_win_len_) {
@@ -153,10 +156,13 @@ StreamingState::finishStreamWithMetadata()
 void
 StreamingState::processAudioWindow(const vector<float>& buf)
 {
+  std::cout << std::this_thread::get_id() << " StreamingState::processAudioWindow() start" << "\n";
   // Compute MFCC features
   vector<float> mfcc;
   mfcc.reserve(model_->n_features_);
+  std::cout << std::this_thread::get_id() << " StreamingState::processAudioWindow() compute_mfcc\n";
   model_->compute_mfcc(buf, mfcc);
+  std::cout << std::this_thread::get_id() << " StreamingState::processAudioWindow() compute_mfcc complete\n";
   pushMfccBuffer(mfcc);
 }
 
@@ -196,6 +202,7 @@ copy_up_to_n(InputIt from_begin, InputIt from_end, OutputIt to_begin, int max_el
 void
 StreamingState::pushMfccBuffer(const vector<float>& buf)
 {
+  std::cout << std::this_thread::get_id() << " StreamingState::pushMfccBuffer() start\n";
   auto start = buf.begin();
   auto end = buf.end();
   while (start != end) {
@@ -216,6 +223,7 @@ StreamingState::pushMfccBuffer(const vector<float>& buf)
 void
 StreamingState::processMfccWindow(const vector<float>& buf)
 {
+  std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() start\n";
   auto start = buf.begin();
   auto end = buf.end();
   while (start != end) {
@@ -225,16 +233,29 @@ StreamingState::processMfccWindow(const vector<float>& buf)
     assert(batch_buffer_.size() <= model_->n_steps_ * model_->mfcc_feats_per_timestep_);
 
     // If we have a full batch
+    std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() batch_buffer_.size=" << batch_buffer_.size() << " "  << (model_->n_steps_ * model_->mfcc_feats_per_timestep_) <<"\n";
+
     if (batch_buffer_.size() == model_->n_steps_ * model_->mfcc_feats_per_timestep_) {
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 555555555\n";
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 444444444\n";
+      break;
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 333333333\n";
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 222222222\n";
       processBatch(batch_buffer_, model_->n_steps_);
       batch_buffer_.resize(0);
     }
   }
+  std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() END\n";
 }
 
 void
 StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
 {
+  std::cout << std::this_thread::get_id() << " StreamingState::processBatch() start\n";
   vector<float> logits;
   model_->infer(buf,
                 n_steps,
@@ -391,10 +412,13 @@ CreateStreamAndFeedAudioContent(ModelState* aCtx,
                                 unsigned int aBufferSize)
 {
   StreamingState* ctx;
+  std::cout << std::this_thread::get_id() << " CreateStreamAndFeedAudioContent creating stream...\n";
   int status = DS_CreateStream(aCtx, &ctx);
+  std::cout << std::this_thread::get_id() << " CreateStreamAndFeedAudioContent stream created\n";
   if (status != DS_ERR_OK) {
     return nullptr;
   }
+  std::cout << std::this_thread::get_id() << " CreateStreamAndFeedAudioContent calling DS_FeedAudioContent()\n";
   DS_FeedAudioContent(ctx, aBuffer, aBufferSize);
   return ctx;
 }
@@ -404,7 +428,10 @@ DS_SpeechToText(ModelState* aCtx,
                 const short* aBuffer,
                 unsigned int aBufferSize)
 {
+  // std::cout __cplusplus;
+  std::cout << "DS_SpeechToText start\n";
   StreamingState* ctx = CreateStreamAndFeedAudioContent(aCtx, aBuffer, aBufferSize);
+  std::cout << "DS_SpeechToText after CreateStreamAndFeedAudioContent...finishingStream...\n";
   return DS_FinishStream(ctx);
 }
 
