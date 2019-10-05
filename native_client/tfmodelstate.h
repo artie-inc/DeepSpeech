@@ -13,7 +13,7 @@ struct TFModelState : public ModelState
 {
   tensorflow::MemmappedEnv* mmap_env_;
   tensorflow::Session* session_;
-  // std::unique_ptr<tensorflow::Session> tfSession_;
+  std::unique_ptr<tensorflow::Session> tfSession_;
   tensorflow::GraphDef graph_def_;
 
   TFModelState();
