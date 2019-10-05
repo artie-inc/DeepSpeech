@@ -237,12 +237,20 @@ StreamingState::processMfccWindow(const vector<float>& buf)
     // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() batch_buffer_.size=" << batch_buffer_.size() << " "  << (model_->n_steps_ * model_->mfcc_feats_per_timestep_) << std::endl;
 
     if (batch_buffer_.size() == model_->n_steps_ * model_->mfcc_feats_per_timestep_) {
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 555555555\n";
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 444444444\n";
+      break;
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 333333333\n";
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 222222222\n";
       processBatch(batch_buffer_, model_->n_steps_);
       batch_buffer_.resize(0);
     }
   }
   // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
-}
 
 void
 StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
@@ -298,13 +306,7 @@ DS_CreateModel(const char* aModelPath,
     return DS_ERR_FAIL_CREATE_MODEL;
   }
 
-<<<<<<< HEAD
   int err = model->init(aModelPath, aBeamWidth);
-||||||| constructed merge base
-  int err = model->init(aModelPath, aAlphabetConfigPath, aBeamWidth);
-=======
-  int err = model->init(aModelPath, aAlphabetConfigPath, aBeamWidth, maxBatchSize, batchTimeoutMicros, numBatchThreads);
->>>>>>> added support for batching parameters on DS_CreateModel
   if (err != DS_ERR_OK) {
     return err;
   }

@@ -25,6 +25,22 @@ TFModelState::~TFModelState()
   delete mmap_env_;
 }
 
+class FakeTask : public tensorflow::serving::BatchTask {
+ public:
+  explicit FakeTask(size_t size) : size_(size) {}
+
+  ~FakeTask() override = default;
+
+  size_t size() const override { return size_; }
+
+  private:
+  const size_t size_;
+
+  // TF_DISALLOW_COPY_AND_ASSIGN(FakeTask);
+};
+
+
+
 int
 TFModelState::init(const char* model_path,
                    unsigned int beam_width,
@@ -58,6 +74,9 @@ TFModelState::init(const char* model_path,
     options.env = mmap_env_;
   }
 
+  session_ = tfSession_.get();
+
+
   status = NewSession(options, &session_);
   if (!status.ok()) {
     std::cerr << status << std::endl;
@@ -85,6 +104,31 @@ TFModelState::init(const char* model_path,
 
     std::cout << "TFModelState::init() created BatchingSession\n";
   }
+
+  tensorflow::serving::BasicBatchScheduler<tensorflow::serving::BatchingSessionTask>::Options schedule_options;
+  schedule_options.max_batch_size = 4;  // fits two 2-unit tasks
+  // schedule_options.batch_timeout_micros = 1 * 1000 * 1000;  // won't trigger
+  schedule_options.batch_timeout_micros = 100;  // won't trigger
+  schedule_options.num_batch_threads = 1;
+  
+  // std::unique_ptr<Session> tfSession(session_);
+  
+  // auto tfSession = std::make_unique<Session>(&session_);
+
+  tensorflow::serving::TensorSignature signature = {
+      {"input_node", "input_lengths", "previous_state_c", "previous_state_h"},
+      {"logits", "new_state_c", "new_state_h"} 
+  };
+
+  std::unique_ptr<Session> batching_session;
+  tensorflow::serving::BatchingSessionOptions batching_session_options;
+  tensorflow::serving::CreateBasicBatchingSession(schedule_options, 
+      batching_session_options, signature, std::move(tfSession_), &batching_session);
+
+  std::cout << "TFModelState::init() created BatchingSession\n";
+// {{"x"}, {"y"}}
+
+
 
   if (is_mmap) {
     status = ReadBinaryProto(mmap_env_,
