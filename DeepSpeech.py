@@ -192,6 +192,9 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
     # to the slightly more useful shape [n_steps, batch_size, n_hidden_6].
     # Note, that this differs from the input in that it is time-major.
     layer_6 = tf.reshape(layer_6, [-1, batch_size, Config.n_hidden_6], name='raw_logits')
+    
+    layer_6 = tf.transpose(layer_6, [1, 0, 2])
+    
     layers['raw_logits'] = layer_6
 
     # Output shape: [n_steps, batch_size, n_hidden_6]
@@ -758,7 +761,25 @@ def export():
     output_names = ",".join(output_names_tensors + output_names_ops)
 
     # Create a saver using variables from the above newly created graph
-    saver = tfv1.train.Saver()
+    def fixup(name):
+        prefixes = ['cudnn_compatible_lstm_cell/', "cudnn_lstm/rnn/multi_rnn_cell/cell_0/cudnn_compatible_lstm_cell/"]
+        for prefix in prefixes:
+            if name.startswith(prefix):
+                return name.replace(prefix, 'lstm_fused_cell/')
+        return name
+
+    map2 = {v.op.name: v for v in tfv1.global_variables()}
+    print("#### map2 ####")
+    for i in map2.items():
+        print(i)
+
+    mapping = {fixup(v.op.name): v for v in tfv1.global_variables()}
+    print("#### mapping ####")
+    for i in mapping.items():
+        print(i)
+
+    # Create a saver using variables from the above newly created graph
+    saver = tfv1.train.Saver(mapping)
 
     # Restore variables from training checkpoint
     checkpoint = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
