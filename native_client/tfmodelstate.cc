@@ -96,8 +96,10 @@ TFModelState::init(const char* model_path,
 
   tensorflow::serving::BasicBatchScheduler<tensorflow::serving::BatchingSessionTask>::Options schedule_options;
   schedule_options.max_batch_size = 4;  // fits two 2-unit tasks
-  // schedule_options.batch_timeout_micros = 1 * 1000 * 1000;  // won't trigger
-  schedule_options.batch_timeout_micros = 100;  // won't trigger
+  // schedule_options.batch_timeout_micros = 1 * 1000 * 100000;  // won't trigger
+  // schedule_options.batch_timeout_micros = 100; 
+  //  schedule_options.batch_timeout_micros = 1000000;  
+   schedule_options.batch_timeout_micros = 500000;  
   // schedule_options.num_batch_threads = 1;
   schedule_options.num_batch_threads = 8;
   
@@ -112,12 +114,12 @@ TFModelState::init(const char* model_path,
 
   // std::unique_ptr<Session> batching_session;
   tensorflow::serving::BatchingSessionOptions batching_session_options;
-  std::cout << "TFModelState::init() pushing1" << std::endl;
-  //batching_session_options.allowed_batch_sizes.push_back(1);
-  std::cout << "TFModelState::init() pushing2" << std::endl;
-  batching_session_options.allowed_batch_sizes.push_back(2);
-  std::cout << "TFModelState::init() pushing3" << std::endl;
-  batching_session_options.allowed_batch_sizes.push_back(3);
+  // std::cout << "TFModelState::init() pushing1" << std::endl;
+  // batching_session_options.allowed_batch_sizes.push_back(1);
+  // std::cout << "TFModelState::init() pushing2" << std::endl;
+  // batching_session_options.allowed_batch_sizes.push_back(2);
+  // std::cout << "TFModelState::init() pushing3" << std::endl;
+  // batching_session_options.allowed_batch_sizes.push_back(3);
   std::cout << "TFModelState::init() pushing4" << std::endl;  
   batching_session_options.allowed_batch_sizes.push_back(4);
   std::cout << "TFModelState::init() pushing DONE" << std::endl;
