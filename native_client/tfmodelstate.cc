@@ -85,48 +85,48 @@ TFModelState::init(const char* model_path,
   status = NewSession(options, &session_);
 
   // session_ = tfSession_.get();
-  tfSession_ = std::unique_ptr<tensorflow::Session>(session_);
+  // tfSession_ = std::unique_ptr<tensorflow::Session>(session_);
 
 
   if (!status.ok()) {
     std::cerr << status << std::endl;
     return DS_ERR_FAIL_INIT_SESS;
   }
-  std::cout << "TFModelState::init() created NewSession" << " typeid=" << typeid(session_).name() << std::endl;
+  // std::cout << "TFModelState::init() created NewSession" << " typeid=" << typeid(session_).name() << std::endl;
 
-  tensorflow::serving::BasicBatchScheduler<tensorflow::serving::BatchingSessionTask>::Options schedule_options;
-  schedule_options.max_batch_size = 4;  // fits two 2-unit tasks
-  // schedule_options.batch_timeout_micros = 1 * 1000 * 100000;  // won't trigger
-  // schedule_options.batch_timeout_micros = 100; 
-  //  schedule_options.batch_timeout_micros = 1000000;  
-   schedule_options.batch_timeout_micros = 500000;  
-  // schedule_options.num_batch_threads = 1;
-  schedule_options.num_batch_threads = 8;
+  // tensorflow::serving::BasicBatchScheduler<tensorflow::serving::BatchingSessionTask>::Options schedule_options;
+  // schedule_options.max_batch_size = 1;  // fits two 2-unit tasks
+  // // schedule_options.batch_timeout_micros = 1 * 1000 * 100000;  // won't trigger
+  // // schedule_options.batch_timeout_micros = 100; 
+  // //  schedule_options.batch_timeout_micros = 1000000;  
+  //  schedule_options.batch_timeout_micros = 500000;  
+  // // schedule_options.num_batch_threads = 1;
+  // schedule_options.num_batch_threads = 2;
   
-  // std::unique_ptr<Session> tfSession(session_);
+  // // std::unique_ptr<Session> tfSession(session_);
   
-  // auto tfSession = std::make_unique<Session>(&session_);
+  // // auto tfSession = std::make_unique<Session>(&session_);
 
-  tensorflow::serving::TensorSignature signature = {
-      {"input_node", "input_lengths", "previous_state_c", "previous_state_h"},
-      {"logits", "new_state_c", "new_state_h"} 
-  };
+  // tensorflow::serving::TensorSignature signature = {
+  //     {"input_node", "input_lengths", "previous_state_c", "previous_state_h"},
+  //     {"logits", "new_state_c", "new_state_h"} 
+  // };
 
-  // std::unique_ptr<Session> batching_session;
-  tensorflow::serving::BatchingSessionOptions batching_session_options;
+  // // std::unique_ptr<Session> batching_session;
+  // tensorflow::serving::BatchingSessionOptions batching_session_options;
   // std::cout << "TFModelState::init() pushing1" << std::endl;
   // batching_session_options.allowed_batch_sizes.push_back(1);
-  // std::cout << "TFModelState::init() pushing2" << std::endl;
-  // batching_session_options.allowed_batch_sizes.push_back(2);
-  // std::cout << "TFModelState::init() pushing3" << std::endl;
-  // batching_session_options.allowed_batch_sizes.push_back(3);
-  std::cout << "TFModelState::init() pushing4" << std::endl;  
-  batching_session_options.allowed_batch_sizes.push_back(4);
-  std::cout << "TFModelState::init() pushing DONE" << std::endl;
-  tensorflow::serving::CreateBasicBatchingSession(schedule_options, 
-      batching_session_options, signature, std::move(tfSession_), &batching_session);
+  // // std::cout << "TFModelState::init() pushing2" << std::endl;
+  // // batching_session_options.allowed_batch_sizes.push_back(2);
+  // // std::cout << "TFModelState::init() pushing3" << std::endl;
+  // // batching_session_options.allowed_batch_sizes.push_back(3);
+  // // std::cout << "TFModelState::init() pushing4" << std::endl;  
+  // // batching_session_options.allowed_batch_sizes.push_back(4);
+  // std::cout << "TFModelState::init() pushing DONE" << std::endl;
+  // tensorflow::serving::CreateBasicBatchingSession(schedule_options, 
+  //     batching_session_options, signature, std::move(tfSession_), &batching_session);
 
-  std::cout << "TFModelState::init() created BatchingSession\n";
+  // std::cout << "TFModelState::init() created BatchingSession\n";
 // {{"x"}, {"y"}}
 
 
@@ -270,10 +270,11 @@ TFModelState::infer(const std::vector<float>& mfcc,
   input_lengths.scalar<int>()() = n_frames;
 
   vector<Tensor> outputs;
-  // Status status = session_->Run(
   std::cout << "TFModelState::infer() calling run()\n";
+
+  Status status = session_->Run(
   // Status status = tfSession_->Run(    
-  Status status = batching_session.get()->Run(        
+  // Status status = batching_session.get()->Run(        
     {
      {"input_node", input},
      {"input_lengths", input_lengths},
