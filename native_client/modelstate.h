@@ -30,7 +30,11 @@ struct ModelState {
   ModelState();
   virtual ~ModelState();
 
-  virtual int init(const char* model_path, unsigned int beam_width);
+  virtual int init(const char* model_path,
+                   unsigned int beam_width,
+                   int max_batch_size,
+                   int batch_timeout_micros,
+                   int num_batch_threads);
 
   virtual void compute_mfcc(const std::vector<float>& audio_buffer, std::vector<float>& mfcc_output) = 0;
 

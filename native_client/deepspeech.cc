@@ -280,6 +280,9 @@ StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
 int
 DS_CreateModel(const char* aModelPath,
                unsigned int aBeamWidth,
+               int maxBatchSize,
+               int batchTimeoutMicros,
+               int numBatchThreads,
                ModelState** retval)
 {
   *retval = nullptr;
@@ -304,7 +307,13 @@ DS_CreateModel(const char* aModelPath,
     return DS_ERR_FAIL_CREATE_MODEL;
   }
 
+<<<<<<< HEAD
   int err = model->init(aModelPath, aBeamWidth);
+||||||| constructed merge base
+  int err = model->init(aModelPath, aAlphabetConfigPath, aBeamWidth);
+=======
+  int err = model->init(aModelPath, aAlphabetConfigPath, aBeamWidth, maxBatchSize, batchTimeoutMicros, numBatchThreads);
+>>>>>>> added support for batching parameters on DS_CreateModel
   if (err != DS_ERR_OK) {
     return err;
   }

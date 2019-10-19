@@ -25,7 +25,10 @@ ModelState::~ModelState()
 
 int
 ModelState::init(const char* model_path,
-                 unsigned int beam_width)
+                 unsigned int beam_width,
+                 int max_batch_size,
+                 int batch_timeout_micros,
+                 int num_batch_threads)
 {
   beam_width_ = beam_width;
   return DS_ERR_OK;
