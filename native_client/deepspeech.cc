@@ -306,7 +306,7 @@ DS_CreateModel(const char* aModelPath,
     return DS_ERR_FAIL_CREATE_MODEL;
   }
 
-  int err = model->init(aModelPath, aBeamWidth);
+  int err = model->init(aModelPath, aBeamWidth, maxBatchSize, batchTimeoutMicros, numBatchThreads);
   if (err != DS_ERR_OK) {
     return err;
   }
