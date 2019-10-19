@@ -26,7 +26,10 @@ ModelState::~ModelState()
 int
 ModelState::init(const char* model_path,
                  const char* alphabet_path,
-                 unsigned int beam_width)
+                 unsigned int beam_width,
+                 int max_batch_size,
+                 int batch_timeout_micros,
+                 int num_batch_threads)
 {
   if (alphabet_.init(alphabet_path)) {
     return DS_ERR_INVALID_ALPHABET;

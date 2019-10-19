@@ -281,6 +281,9 @@ int
 DS_CreateModel(const char* aModelPath,
                const char* aAlphabetConfigPath,
                unsigned int aBeamWidth,
+               int maxBatchSize,
+               int batchTimeoutMicros,
+               int numBatchThreads,
                ModelState** retval)
 {
   *retval = nullptr;
@@ -305,7 +308,7 @@ DS_CreateModel(const char* aModelPath,
     return DS_ERR_FAIL_CREATE_MODEL;
   }
 
-  int err = model->init(aModelPath, aAlphabetConfigPath, aBeamWidth);
+  int err = model->init(aModelPath, aAlphabetConfigPath, aBeamWidth, maxBatchSize, batchTimeoutMicros, numBatchThreads);
   if (err != DS_ERR_OK) {
     return err;
   }

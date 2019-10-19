@@ -82,6 +82,11 @@ enum DeepSpeech_Error_Codes
  * @param aBeamWidth The beam width used by the decoder. A larger beam
  *                   width generates better results at the cost of decoding
  *                   time.
+ * @param maxBatchSize The maximum number of inferences to be batched at once
+ * @param batchTimeoutMicros The Max time to wait before running an batch that 
+ *                           is not full yet
+ * @param numBatchThreads  The degree of parallelism, i.e. the maximum number 
+ *                         of batches processed concurrently.
  * @param[out] retval a ModelState pointer
  *
  * @return Zero on success, non-zero on failure.
@@ -90,6 +95,9 @@ DEEPSPEECH_EXPORT
 int DS_CreateModel(const char* aModelPath,
                    const char* aAlphabetConfigPath,
                    unsigned int aBeamWidth,
+                   int maxBatchSize,
+                   int batchTimeoutMicros,
+                   int numBatchThreads,                   
                    ModelState** retval);
 
 /**
