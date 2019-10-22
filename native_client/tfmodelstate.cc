@@ -244,7 +244,7 @@ TFModelState::infer(const std::vector<float>& mfcc,
                     vector<float>& state_c_output,
                     vector<float>& state_h_output)
 {
-  std::cout << "TFModelState::infer() start\n";
+  // std::cout << "TFModelState::infer() start\n";
   const size_t num_classes = alphabet_.GetSize() + 1; // +1 for blank
 
   Tensor input = tensor_from_vector(mfcc, TensorShape({BATCH_SIZE, n_steps_, 2*n_context_+1, n_features_}));
@@ -256,7 +256,7 @@ TFModelState::infer(const std::vector<float>& mfcc,
 
   vector<Tensor> outputs;
   // Status status = session_->Run(
-  std::cout << "TFModelState::infer() calling run()\n";
+  // std::cout << "TFModelState::infer() calling run()\n";
   // Status status = tfSession_->Run(    
   Status status = batching_session.get()->Run(        
     {
@@ -268,7 +268,7 @@ TFModelState::infer(const std::vector<float>& mfcc,
     {"logits", "new_state_c", "new_state_h"},
     {},
     &outputs);
-  std::cout << "TFModelState::infer() run() complete\n";
+  // std::cout << "TFModelState::infer() run() complete\n";
   if (!status.ok()) {
     std::cerr << "Error running session: " << status << "\n";
     return;
