@@ -237,15 +237,6 @@ StreamingState::processMfccWindow(const vector<float>& buf)
     // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() batch_buffer_.size=" << batch_buffer_.size() << " "  << (model_->n_steps_ * model_->mfcc_feats_per_timestep_) << std::endl;
 
     if (batch_buffer_.size() == model_->n_steps_ * model_->mfcc_feats_per_timestep_) {
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() 555555555" << std::endl;
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() 444444444" << std::endl;
-      // break;
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 333333333\n";
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 222222222\n";
       processBatch(batch_buffer_, model_->n_steps_);
       batch_buffer_.resize(0);
     }
@@ -432,7 +423,6 @@ DS_SpeechToText(ModelState* aCtx,
                 const short* aBuffer,
                 unsigned int aBufferSize)
 {
-  // std::cout __cplusplus;
   // std::cout << "DS_SpeechToText start" << std::endl;
   StreamingState* ctx = CreateStreamAndFeedAudioContent(aCtx, aBuffer, aBufferSize);
   // std::cout << "DS_SpeechToText after CreateStreamAndFeedAudioContent...finishingStream..." << std::endl;

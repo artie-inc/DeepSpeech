@@ -11,7 +11,6 @@
 
 #include <sstream>
 #include <string>
-#include <iostream>
 
 #if defined(__ANDROID__) || defined(_MSC_VER)
 #define NO_SOX
@@ -68,7 +67,6 @@ LocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
   } else if (stream_size > 0) {
     StreamingState* ctx;
     int status = DS_CreateStream(aCtx, &ctx);
-    std::cout << "client-cc stream created" << std::endl;
     if (status != DS_ERR_OK) {
       res.string = strdup("");
       return res;
@@ -77,13 +75,9 @@ LocalDsSTT(ModelState* aCtx, const short* aBuffer, size_t aBufferSize,
     const char *last = nullptr;
     while (off < aBufferSize) {
       size_t cur = aBufferSize - off > stream_size ? stream_size : aBufferSize - off;
-      std::cout << "FeedAudioContent" << std::endl;
       DS_FeedAudioContent(ctx, aBuffer + off, cur);
-      std::cout << "FeedAudioContent DONE" << std::endl;
       off += cur;
-      std::cout << "IntermediateDecode" << std::endl;
       const char* partial = DS_IntermediateDecode(ctx);
-      std::cout << "IntermediateDecode DONE" << std::endl;
       if (last == nullptr || strcmp(last, partial)) {
         printf("%s\n", partial);
         last = partial;
@@ -375,7 +369,7 @@ main(int argc, char **argv)
 
   // Initialise DeepSpeech
   ModelState* ctx;
-  int status = DS_CreateModel(model, alphabet, beam_width, &ctx);
+  int status = DS_CreateModel(model, alphabet, beam_width, 0, 0, 0, &ctx);
   if (status != 0) {
     fprintf(stderr, "Could not create model.\n");
     return 1;
