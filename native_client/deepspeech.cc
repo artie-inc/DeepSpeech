@@ -237,6 +237,7 @@ StreamingState::processMfccWindow(const vector<float>& buf)
     // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() batch_buffer_.size=" << batch_buffer_.size() << " "  << (model_->n_steps_ * model_->mfcc_feats_per_timestep_) << std::endl;
 
     if (batch_buffer_.size() == model_->n_steps_ * model_->mfcc_feats_per_timestep_) {
+<<<<<<< HEAD
       std::this_thread::sleep_for(std::chrono::seconds(5));
       std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 555555555\n";
       std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -246,6 +247,18 @@ StreamingState::processMfccWindow(const vector<float>& buf)
       // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 333333333\n";
       // std::this_thread::sleep_for(std::chrono::seconds(5));
       // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 222222222\n";
+||||||| constructed merge base
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() 555555555" << std::endl;
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() 444444444" << std::endl;
+      // break;
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 333333333\n";
+      // std::this_thread::sleep_for(std::chrono::seconds(5));
+      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 222222222\n";
+=======
+>>>>>>> Removed debug output.
       processBatch(batch_buffer_, model_->n_steps_);
       batch_buffer_.resize(0);
     }
