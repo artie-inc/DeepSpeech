@@ -816,16 +816,7 @@ def export():
                 return name.replace(prefix, 'lstm_fused_cell/')
         return name
 
-    map2 = {v.op.name: v for v in tfv1.global_variables()}
-    print("#### map2 ####")
-    for i in map2.items():
-        print(i)
-
     mapping = {fixup(v.op.name): v for v in tfv1.global_variables()}
-    print("#### mapping ####")
-    for i in mapping.items():
-        print(i)
-
     # Create a saver using variables from the above newly created graph
     saver = tfv1.train.Saver(mapping)
 
