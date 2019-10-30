@@ -15,6 +15,7 @@ import shutil
 import tensorflow as tf
 import tensorflow.compat.v1 as tfv1
 import time
+import re
 
 from datetime import datetime
 from ds_ctcdecoder import ctc_beam_search_decoder, Scorer
@@ -39,9 +40,12 @@ def variable_on_cpu(name, shape, initializer):
     # Use the /cpu:0 device for scoped operations
     with tf.device(Config.cpu_device):
         # Create or get apropos variable
+        print(name)
         var = tfv1.get_variable(name=name, shape=shape, initializer=initializer)
     return var
 
+def device_token(device_num):
+    return "--DEVICE_" + device_num + "--"
 
 def create_overlapping_windows(batch_x):
     batch_size = tf.shape(input=batch_x)[0]
@@ -63,10 +67,12 @@ def create_overlapping_windows(batch_x):
     return batch_x
 
 
-def dense(name, x, units, dropout_rate=None, relu=True):
+def dense(name, x, units, dropout_rate=None, relu=True, device_num=""):
+    print("DENSE()")
+    token  = device_token(device_num)
     with tfv1.variable_scope(name):
-        bias = variable_on_cpu('bias', [units], tfv1.zeros_initializer())
-        weights = variable_on_cpu('weights', [x.shape[-1], units], tfv1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
+        bias = variable_on_cpu('bias'+token, [units], tfv1.zeros_initializer())
+        weights = variable_on_cpu('weights'+token, [x.shape[-1], units], tfv1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
 
     output = tf.nn.bias_add(tf.matmul(x, weights), bias)
 
@@ -79,12 +85,12 @@ def dense(name, x, units, dropout_rate=None, relu=True):
     return output
 
 
-def rnn_impl_lstmblockfusedcell(x, seq_length, previous_state, reuse):
+def rnn_impl_lstmblockfusedcell(x, seq_length, previous_state, reuse, deviceNum):
     with tfv1.variable_scope('cudnn_lstm/rnn/multi_rnn_cell/cell_0'):
         fw_cell = tf.contrib.rnn.LSTMBlockFusedCell(Config.n_cell_dim,
                                                     forget_bias=1.0,
                                                     reuse=reuse,
-                                                    name='cudnn_compatible_lstm_cell')
+                                                    name='cudnn_compatible_lstm_cell'+device_token(deviceNum))
 
         output, output_state = fw_cell(inputs=x,
                                        dtype=tf.float32,
@@ -143,8 +149,13 @@ def rnn_impl_static_rnn(x, seq_length, previous_state, reuse):
     return output, output_state
 
 
-def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, previous_state=None, overlap=True, rnn_impl=rnn_impl_lstmblockfusedcell):
+def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, previous_state=None, overlap=True, rnn_impl=rnn_impl_lstmblockfusedcell, device_num=0):
     layers = {}
+
+    # # for d in ['/device:GPU:0', '/device:GPU:1', '/device:GPU:2', '/device:GPU:3']:
+    # for d in ['/device:GPU:0', '/device:GPU:1']:
+    #     with tf.device(d):
+            # device_num = d[-1]
 
     # Input shape: [batch_size, n_steps, n_input + 2*n_input*n_context]
     if not batch_size:
@@ -152,54 +163,59 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
 
     # Create overlapping feature windows if needed
     if overlap:
-        batch_x = create_overlapping_windows(batch_x)
+        batch_x2 = create_overlapping_windows(batch_x)
+    else:
+        batch_x2 = batch_x
 
     # Reshaping `batch_x` to a tensor with shape `[n_steps*batch_size, n_input + 2*n_input*n_context]`.
     # This is done to prepare the batch for input into the first layer which expects a tensor of rank `2`.
 
     # Permute n_steps and batch_size
-    batch_x = tf.transpose(a=batch_x, perm=[1, 0, 2, 3])
+    batch_x3 = tf.transpose(a=batch_x2, perm=[1, 0, 2, 3])
     # Reshape to prepare input for first layer
-    batch_x = tf.reshape(batch_x, [-1, Config.n_input + 2*Config.n_input*Config.n_context]) # (n_steps*batch_size, n_input + 2*n_input*n_context)
-    layers['input_reshaped'] = batch_x
+    batch_x4 = tf.reshape(batch_x3, [-1, Config.n_input + 2*Config.n_input*Config.n_context]) # (n_steps*batch_size, n_input + 2*n_input*n_context)
+    layers['input_reshaped'] = batch_x4
 
+
+    print("DEVICE_NUM={}".format(device_num))
+    
     # The next three blocks will pass `batch_x` through three hidden layers with
     # clipped RELU activation and dropout.
-    layers['layer_1'] = layer_1 = dense('layer_1', batch_x, Config.n_hidden_1, dropout_rate=dropout[0])
-    layers['layer_2'] = layer_2 = dense('layer_2', layer_1, Config.n_hidden_2, dropout_rate=dropout[1])
-    layers['layer_3'] = layer_3 = dense('layer_3', layer_2, Config.n_hidden_3, dropout_rate=dropout[2])
+    layers['layer_1'] = layer_1 = dense('layer_1', batch_x4, Config.n_hidden_1, dropout_rate=dropout[0], device_num=device_num)
+    layers['layer_2'] = layer_2 = dense('layer_2', layer_1, Config.n_hidden_2, dropout_rate=dropout[1], device_num=device_num)
+    layers['layer_3'] = layer_3 = dense('layer_3', layer_2, Config.n_hidden_3, dropout_rate=dropout[2], device_num=device_num)
 
     # `layer_3` is now reshaped into `[n_steps, batch_size, 2*n_cell_dim]`,
     # as the LSTM RNN expects its input to be of shape `[max_time, batch_size, input_size]`.
-    layer_3 = tf.reshape(layer_3, [-1, batch_size, Config.n_hidden_3])
+    layer_3_2 = tf.reshape(layer_3, [-1, batch_size, Config.n_hidden_3])
 
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
-    output, output_state = rnn_impl(layer_3, seq_length, previous_state, reuse)
+    output, output_state = rnn_impl(layer_3_2, seq_length, previous_state, reuse, device_num)
 
     # Reshape output from a tensor of shape [n_steps, batch_size, n_cell_dim]
     # to a tensor of shape [n_steps*batch_size, n_cell_dim]
-    output = tf.reshape(output, [-1, Config.n_cell_dim])
-    layers['rnn_output'] = output
+    output2 = tf.reshape(output, [-1, Config.n_cell_dim])
+    layers['rnn_output'] = output2
     layers['rnn_output_state'] = output_state
 
     # Now we feed `output` to the fifth hidden layer with clipped RELU activation
-    layers['layer_5'] = layer_5 = dense('layer_5', output, Config.n_hidden_5, dropout_rate=dropout[5])
+    layers['layer_5'] = layer_5 = dense('layer_5', output2, Config.n_hidden_5, dropout_rate=dropout[5], device_num=device_num)
 
     # Now we apply a final linear layer creating `n_classes` dimensional vectors, the logits.
-    layers['layer_6'] = layer_6 = dense('layer_6', layer_5, Config.n_hidden_6, relu=False)
+    layers['layer_6'] = layer_6 = dense('layer_6', layer_5, Config.n_hidden_6, relu=False, device_num=device_num)
 
     # Finally we reshape layer_6 from a tensor of shape [n_steps*batch_size, n_hidden_6]
     # to the slightly more useful shape [n_steps, batch_size, n_hidden_6].
     # Note, that this differs from the input in that it is time-major.
     layer_6 = tf.reshape(layer_6, [-1, batch_size, Config.n_hidden_6], name='raw_logits')
     
-    layer_6 = tf.transpose(layer_6, [1, 0, 2])
+    layer_6Trans = tf.transpose(layer_6, [1, 0, 2])
     
-    layers['raw_logits'] = layer_6
+    layers['raw_logits'] = layer_6Trans
 
     # Output shape: [n_steps, batch_size, n_hidden_6]
-    return layer_6, layers
+    return layer_6Trans, layers
 
 
 # Accuracy and Loss
@@ -674,6 +690,7 @@ def test():
 
 
 def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
+
     batch_size = batch_size if batch_size > 0 else None
 
     # Create feature computation graph
@@ -682,66 +699,72 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
     mfccs, _ = samples_to_mfccs(samples, FLAGS.audio_sample_rate)
     mfccs = tf.identity(mfccs, name='mfccs')
 
-    # Input tensor will be of shape [batch_size, n_steps, 2*n_context+1, n_input]
-    # This shape is read by the native_client in DS_CreateModel to know the
-    # value of n_steps, n_context and n_input. Make sure you update the code
-    # there if this shape is changed.
-    input_tensor = tfv1.placeholder(tf.float32, [batch_size, n_steps if n_steps > 0 else None, 2 * Config.n_context + 1, Config.n_input], name='input_node')
-    seq_length = tfv1.placeholder(tf.int32, [batch_size], name='input_lengths')
+    # for d in ['/device:GPU:0', '/device:GPU:1', '/device:GPU:2', '/device:GPU:3']:
+    for d in ['/device:GPU:0', '/device:GPU:1']:
+        with tf.device(d):
+            device_num=d[-1]
 
-    if batch_size <= 0:
-        # no state management since n_step is expected to be dynamic too (see below)
-        previous_state = None
-    else:
-        previous_state_c = tfv1.placeholder(tf.float32, [batch_size, Config.n_cell_dim], name='previous_state_c')
-        previous_state_h = tfv1.placeholder(tf.float32, [batch_size, Config.n_cell_dim], name='previous_state_h')
+            # Input tensor will be of shape [batch_size, n_steps, 2*n_context+1, n_input]
+            # This shape is read by the native_client in DS_CreateModel to know the
+            # value of n_steps, n_context and n_input. Make sure you update the code
+            # there if this shape is changed.
+            input_tensor = tfv1.placeholder(tf.float32, [batch_size, n_steps if n_steps > 0 else None, 2 * Config.n_context + 1, Config.n_input], name='input_node')
+            seq_length = tfv1.placeholder(tf.int32, [batch_size], name='input_lengths')
 
-        previous_state = tf.nn.rnn_cell.LSTMStateTuple(previous_state_c, previous_state_h)
+            if batch_size <= 0:
+                # no state management since n_step is expected to be dynamic too (see below)
+                previous_state = None
+            else:
+                previous_state_c = tfv1.placeholder(tf.float32, [batch_size, Config.n_cell_dim], name='previous_state_c')
+                previous_state_h = tfv1.placeholder(tf.float32, [batch_size, Config.n_cell_dim], name='previous_state_h')
 
-    # One rate per layer
-    no_dropout = [None] * 6
+                previous_state = tf.nn.rnn_cell.LSTMStateTuple(previous_state_c, previous_state_h)
 
-    if tflite:
-        rnn_impl = rnn_impl_static_rnn
-    else:
-        rnn_impl = rnn_impl_lstmblockfusedcell
+            # One rate per layer
+            no_dropout = [None] * 6
 
-    logits, layers = create_model(batch_x=input_tensor,
-                                  batch_size=batch_size,
-                                  seq_length=seq_length if not FLAGS.export_tflite else None,
-                                  dropout=no_dropout,
-                                  previous_state=previous_state,
-                                  overlap=False,
-                                  rnn_impl=rnn_impl)
+            if tflite:
+                rnn_impl = rnn_impl_static_rnn
+            else:
+                rnn_impl = rnn_impl_lstmblockfusedcell
 
-    # TF Lite runtime will check that input dimensions are 1, 2 or 4
-    # by default we get 3, the middle one being batch_size which is forced to
-    # one on inference graph, so remove that dimension
-    if tflite:
-        logits = tf.squeeze(logits, [1])
+            logits, layers = create_model(batch_x=input_tensor,
+                                        batch_size=batch_size,
+                                        seq_length=seq_length if not FLAGS.export_tflite else None,
+                                        dropout=no_dropout,
+                                        previous_state=previous_state,
+                                        overlap=False,
+                                        rnn_impl=rnn_impl,
+                                        device_num=device_num)
 
-    # Apply softmax for CTC decoder
-    logits = tf.nn.softmax(logits, name='logits')
+            # TF Lite runtime will check that input dimensions are 1, 2 or 4
+            # by default we get 3, the middle one being batch_size which is forced to
+            # one on inference graph, so remove that dimension
+            if tflite:
+                logits = tf.squeeze(logits, [1])
 
-    if batch_size <= 0:
-        if tflite:
-            raise NotImplementedError('dynamic batch_size does not support tflite nor streaming')
-        if n_steps > 0:
-            raise NotImplementedError('dynamic batch_size expect n_steps to be dynamic too')
-        return (
-            {
-                'input': input_tensor,
-                'input_lengths': seq_length,
-            },
-            {
-                'outputs': logits,
-            },
-            layers
-        )
+            # Apply softmax for CTC decoder
+            logits = tf.nn.softmax(logits, name='logits')
 
-    new_state_c, new_state_h = layers['rnn_output_state']
-    new_state_c = tf.identity(new_state_c, name='new_state_c')
-    new_state_h = tf.identity(new_state_h, name='new_state_h')
+            if batch_size <= 0:
+                if tflite:
+                    raise NotImplementedError('dynamic batch_size does not support tflite nor streaming')
+                if n_steps > 0:
+                    raise NotImplementedError('dynamic batch_size expect n_steps to be dynamic too')
+                return (
+                    {
+                        'input': input_tensor,
+                        'input_lengths': seq_length,
+                    },
+                    {
+                        'outputs': logits,
+                    },
+                    layers
+                )
+
+            new_state_c, new_state_h = layers['rnn_output_state']
+            new_state_c = tf.identity(new_state_c, name='new_state_c')
+            new_state_h = tf.identity(new_state_h, name='new_state_h')
 
     inputs = {
         'input': input_tensor,
@@ -793,6 +816,7 @@ def export():
     output_names = ",".join(output_names_tensors + output_names_ops)
 
     # Create a saver using variables from the above newly created graph
+
     def fixup(name):
         prefixes = ['cudnn_compatible_lstm_cell/', "cudnn_lstm/rnn/multi_rnn_cell/cell_0/cudnn_compatible_lstm_cell/"]
         for prefix in prefixes:
@@ -800,9 +824,31 @@ def export():
                 return name.replace(prefix, 'lstm_fused_cell/')
         return name
 
-    mapping = {fixup(v.op.name): v for v in tfv1.global_variables()}
+    def no_device(name):
+        return re.sub(r'(.*)--DEVICE_\d--(.*)', r'\1\2', name) 
+
+    map2 = {v.op.name: v for v in tfv1.global_variables()}
+    print("#### original session ####")
+    for i in map2.items():
+        print(i)
+
+    
+    #mapping = {no_device(v.op.name): v for v in tfv1.global_variables()}
+    map3 = {fixup(no_device(v.op.name)): v for v in tfv1.global_variables()}
+    print("#### no_device ####")
+    for i in map3.items():
+        print(i)
+
+
+    #mapping = {fixup(v): v for v in map3}
+
+    #print("#### fixup ####")
+    #for i in mapping.items():
+    #    print(i)
+
     # Create a saver using variables from the above newly created graph
-    saver = tfv1.train.Saver(mapping)
+    saver = tfv1.train.Saver(map3)
+
 
     # Restore variables from training checkpoint
     checkpoint = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)

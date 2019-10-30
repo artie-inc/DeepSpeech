@@ -56,8 +56,14 @@ TFModelState::init(const char* model_path,
     options.config.mutable_graph_options()
       ->mutable_optimizer_options()
       ->set_opt_level(::OptimizerOptions::L0);
+
     options.env = mmap_env_;
+    
   }
+
+  options.config.set_allow_soft_placement(true);
+  options.config.set_log_device_placement(true);
+
 
   status = NewSession(options, &session_);
   if (!status.ok()) {
