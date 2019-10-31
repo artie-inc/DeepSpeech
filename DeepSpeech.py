@@ -72,9 +72,9 @@ def create_overlapping_windows(batch_x):
 def dense(name, x, units, dropout_rate=None, relu=True, device_num=""):
     print("DENSE()")
     token  = device_token(device_num)
-    with tfv1.variable_scope(name):
-        bias = variable_on_cpu('bias'+token, [units], tfv1.zeros_initializer())
-        weights = variable_on_cpu('weights'+token, [x.shape[-1], units], tfv1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
+    with tfv1.variable_scope(name+token):
+        bias = variable_on_cpu('bias', [units], tfv1.zeros_initializer())
+        weights = variable_on_cpu('weights', [x.shape[-1], units], tfv1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
 
     output = tf.nn.bias_add(tf.matmul(x, weights), bias)
 
@@ -717,7 +717,7 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
     mfccs = tf.identity(mfccs, name='mfccs')
 
     # for d in ['/device:GPU:0', '/device:GPU:1', '/device:GPU:2', '/device:GPU:3']:
-    for d in ['/device:GPU:0', '/device:GPU:1']:
+    for d in ['/device:GPU:0']:
         with tf.device(d):
             device_num=d[-1]
 
