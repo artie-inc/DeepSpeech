@@ -90,7 +90,7 @@ TFModelState::init(const char* model_path,
     tensorflow::serving::CreateBasicBatchingSession(schedule_options, 
         batching_session_options, signature, std::move(tf_session_), &batching_session_);
 
-    std::cout << "TFModelState::init() created BatchingSession\n";
+    std::cout << "TFModelState::init() created BatchingSession" <<  std::endl;
   }
 
   if (is_mmap) {
