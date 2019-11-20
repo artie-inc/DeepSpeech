@@ -694,10 +694,11 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
     batch_size = batch_size if batch_size > 0 else None
 
     # Create feature computation graph
-    input_samples = tfv1.placeholder(tf.float32, [Config.audio_window_samples], 'input_samples')
-    samples = tf.expand_dims(input_samples, -1)
-    mfccs, _ = samples_to_mfccs(samples, FLAGS.audio_sample_rate)
-    mfccs = tf.identity(mfccs, name='mfccs')
+    with tf.device("/cpu:0"):
+        input_samples = tfv1.placeholder(tf.float32, [Config.audio_window_samples], 'input_samples')
+        samples = tf.expand_dims(input_samples, -1)
+        mfccs, _ = samples_to_mfccs(samples, FLAGS.audio_sample_rate)
+        mfccs = tf.identity(mfccs, name='mfccs')
 
     # for d in ['/device:GPU:0', '/device:GPU:1', '/device:GPU:2', '/device:GPU:3']:
     for d in ['/device:GPU:0']:
