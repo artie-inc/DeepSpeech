@@ -1,3 +1,7 @@
+#include <thread>
+#include <chrono>
+#include <ctime>   
+
 #include "tfmodelstate.h"
 
 #include "workspace_status.h"
@@ -24,6 +28,12 @@ TFModelState::~TFModelState()
   }
   delete mmap_env_;
 }
+
+uint64_t timeSinceEpochMillisec() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
+
 
 int
 TFModelState::init(const char* model_path,
@@ -60,6 +70,10 @@ TFModelState::init(const char* model_path,
     options.env = mmap_env_;
     
   }
+
+  options.config.mutable_graph_options()
+    ->mutable_optimizer_options()
+    ->set_opt_level(::OptimizerOptions::L0);
 
   options.config.set_allow_soft_placement(true);
   options.config.set_log_device_placement(true);
@@ -221,12 +235,31 @@ TFModelState::infer(const std::vector<float>& mfcc,
                     vector<float>& state_c_output,
                     vector<float>& state_h_output)
 {
+  return infer(mfcc, n_frames, previous_state_c, previous_state_h, logits_output, state_c_output, state_h_output, false);
+}
+
+void
+TFModelState::infer(const std::vector<float>& mfcc,
+                    unsigned int n_frames,
+                    const std::vector<float>& previous_state_c,
+                    const std::vector<float>& previous_state_h,
+                    vector<float>& logits_output,
+                    vector<float>& state_c_output,
+                    vector<float>& state_h_output, bool doProfile)
+{
   // std::cout << "TFModelState::infer() start\n";
+
+  auto t_start = std::chrono::high_resolution_clock::now();
+
   const size_t num_classes = alphabet_.GetSize() + 1; // +1 for blank
 
   Tensor input = tensor_from_vector(mfcc, TensorShape({BATCH_SIZE, n_steps_, 2*n_context_+1, n_features_}));
   Tensor previous_state_c_t = tensor_from_vector(previous_state_c, TensorShape({BATCH_SIZE, (long long)state_size_}));
   Tensor previous_state_h_t = tensor_from_vector(previous_state_h, TensorShape({BATCH_SIZE, (long long)state_size_}));
+
+  auto t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms_tensors = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  t_start = std::chrono::high_resolution_clock::now();
 
   Tensor input_lengths(DT_INT32, TensorShape({1}));
   input_lengths.scalar<int>()() = n_frames;
@@ -241,6 +274,10 @@ TFModelState::infer(const std::vector<float>& mfcc,
     session_to_run = session_;
   }
 
+  t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms_sess = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  t_start = std::chrono::high_resolution_clock::now();
+
   // std::cout << "TFModelState::infer() calling run()\n";
   Status status = session_to_run->Run(        
     {
@@ -252,6 +289,12 @@ TFModelState::infer(const std::vector<float>& mfcc,
     {"logits", "new_state_c", "new_state_h"},
     {},
     &outputs);
+
+  t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms_run = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  t_start = std::chrono::high_resolution_clock::now();
+
+
   // std::cout << "TFModelState::infer() run() complete\n";
   if (!status.ok()) {
     std::cerr << "Error running session: " << status << "\n";
@@ -267,15 +310,47 @@ TFModelState::infer(const std::vector<float>& mfcc,
   state_h_output.clear();
   state_h_output.reserve(state_size_);
   copy_tensor_to_vector(outputs[2], state_h_output);
+
+  t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms_copy = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  t_start = std::chrono::high_resolution_clock::now();
+
+  if(doProfile) {
+    std::cout << timeSinceEpochMillisec() << " " << std::this_thread::get_id()
+    << " TFModelState::infer() "
+    << " tensors=" << elapsed_time_ms_tensors 
+    << " sess=" << elapsed_time_ms_sess 
+    << " run=" << elapsed_time_ms_run
+    << " copy=" << elapsed_time_ms_copy 
+    << std::endl;
+  }
 }
 
 void
 TFModelState::compute_mfcc(const vector<float>& samples, vector<float>& mfcc_output)
 {
-  Tensor input = tensor_from_vector(samples, TensorShape({audio_win_len_}));
+  return compute_mfcc(samples, mfcc_output, false);
+}
 
+void
+TFModelState::compute_mfcc(const vector<float>& samples, vector<float>& mfcc_output, bool doProfile)
+{
+
+    // options.config.mutable_graph_options()
+    //   ->mutable_optimizer_options()
+    //   ->set_opt_level(::OptimizerOptions::L0);
+
+  auto t_start = std::chrono::high_resolution_clock::now();
+  Tensor input = tensor_from_vector(samples, TensorShape({audio_win_len_}));
+  auto t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms_1 = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  t_start = std::chrono::high_resolution_clock::now();
+  
   vector<Tensor> outputs;
-  Status status = session_->Run({{"input_samples", input}}, {"mfccs"}, {}, &outputs);
+  Status status = session_->Run({{"input_samples", input}}, {"mfccs"}, {}, &outputs, doProfile);
+  t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms_run = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  t_start = std::chrono::high_resolution_clock::now();
 
   if (!status.ok()) {
     std::cerr << "Error running session: " << status << "\n";
@@ -286,4 +361,13 @@ TFModelState::compute_mfcc(const vector<float>& samples, vector<float>& mfcc_out
   const int n_windows = 1;
   assert(outputs[0].shape().num_elements() / n_features_ == n_windows);
   copy_tensor_to_vector(outputs[0], mfcc_output);
+  t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms_copy = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+
+  if(doProfile && (elapsed_time_ms_1 + elapsed_time_ms_run + elapsed_time_ms_copy > 1000)) {
+    std::cout << "TFModelState::compute_mfcc() ms1=" << elapsed_time_ms_1 << " run=" << elapsed_time_ms_run << " copy=" << elapsed_time_ms_copy << std::endl;
+  }
 }
+
+
+

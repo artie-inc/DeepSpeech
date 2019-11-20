@@ -39,6 +39,8 @@
 
 using std::vector;
 
+bool profiling_flag = false;
+
 /* This is the implementation of the streaming inference API.
 
    The streaming process uses three buffers that are fed eagerly as audio data
@@ -130,7 +132,7 @@ StreamingState::feedAudioContent(const short* buffer,
       audio_buffer_.push_back((float)(*buffer) * multiplier);
       ++buffer;
       --buffer_size;
-      if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() looped buffer_size=" << buffer_size << " audio_buffer_.size()=" << audio_buffer_.size() << std::endl;
+      //if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() looped buffer_size=" << buffer_size << " audio_buffer_.size()=" << audio_buffer_.size() << std::endl;
       
     }
 
@@ -188,7 +190,7 @@ StreamingState::processAudioWindow(const vector<float>& buf)
   if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processAudioWindow() compute_mfcc" << std::endl;
 
   auto t_start = std::chrono::high_resolution_clock::now();
-  model_->compute_mfcc(buf, mfcc);
+  model_->compute_mfcc(buf, mfcc, do_profiling_);
   auto t_end = std::chrono::high_resolution_clock::now();
 
   auto elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
@@ -287,7 +289,7 @@ StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
                 previous_state_h_,
                 logits,
                 previous_state_c_,
-                previous_state_h_);
+                previous_state_h_, do_profiling_);
   auto t_end = std::chrono::high_resolution_clock::now();
   double elapsed_time_ms_infer = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
 
@@ -408,8 +410,9 @@ DS_CreateStream(ModelState* aCtx,
   //if(r < 4) {
   //  ctx->do_profiling_ = true;
   //}
-  ctx->do_profiling_ = r < 2;
+  ctx->do_profiling_ = r < 5 && !profiling_flag;
   if(ctx->do_profiling_) {
+    profiling_flag = true;
     ctx->stream_id_ = rand() % 10000;
     std::cout <<  timeSinceEpochMillisec() << " " << std::this_thread::get_id() << " profiling  stream_id=" << ctx->stream_id_ << std::endl;
     std::cout <<  timeSinceEpochMillisec() << " " << ctx->stream_id_ << " " << std::this_thread::get_id() <<  " n_steps_=" << ctx->model_->n_steps_ << " n_context_=" << aCtx->n_context_ << " n_features_=" << aCtx->n_features_ << " mfcc_feats_per_timestep_=" << ctx->model_->mfcc_feats_per_timestep_ << std::endl;

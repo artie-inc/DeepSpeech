@@ -38,6 +38,7 @@ struct ModelState {
                    int num_batch_threads);
 
   virtual void compute_mfcc(const std::vector<float>& audio_buffer, std::vector<float>& mfcc_output) = 0;
+  virtual void compute_mfcc(const std::vector<float>& audio_buffer, std::vector<float>& mfcc_output, bool doProfile) = 0;
 
   /**
    * @brief Do a single inference step in the acoustic model, with:
@@ -56,6 +57,15 @@ struct ModelState {
                      std::vector<float>& logits_output,
                      std::vector<float>& state_c_output,
                      std::vector<float>& state_h_output) = 0;
+  
+  virtual void infer(const std::vector<float>& mfcc,
+                     unsigned int n_frames,
+                     const std::vector<float>& previous_state_c,
+                     const std::vector<float>& previous_state_h,
+                     std::vector<float>& logits_output,
+                     std::vector<float>& state_c_output,
+                     std::vector<float>& state_h_output, bool doProfile) = 0;
+
 
   /**
    * @brief Perform decoding of the logits, using basic CTC decoder or
