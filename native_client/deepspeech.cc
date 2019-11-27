@@ -114,7 +114,7 @@ shift_buffer_left(vector<T>& buf, int shift_amount)
   buf.resize(buf.size() - shift_amount);
 }
 
-uint64_t timeSinceEpochMillisec() {
+uint64_t timeSinceEpochMillisec2() {
   using namespace std::chrono;
   return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
@@ -123,7 +123,7 @@ void
 StreamingState::feedAudioContent(const short* buffer,
                                  unsigned int buffer_size)
 {
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() start buffer_size=" << buffer_size << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() start buffer_size=" << buffer_size << std::endl;
   // Consume all the data that was passed in, processing full buffers if needed
   while (buffer_size > 0) {
     while (buffer_size > 0 && audio_buffer_.size() < model_->audio_win_len_) {
@@ -132,7 +132,7 @@ StreamingState::feedAudioContent(const short* buffer,
       audio_buffer_.push_back((float)(*buffer) * multiplier);
       ++buffer;
       --buffer_size;
-      //if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() looped buffer_size=" << buffer_size << " audio_buffer_.size()=" << audio_buffer_.size() << std::endl;
+      //if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() looped buffer_size=" << buffer_size << " audio_buffer_.size()=" << audio_buffer_.size() << std::endl;
       
     }
 
@@ -142,7 +142,7 @@ StreamingState::feedAudioContent(const short* buffer,
       processAudioWindow(audio_buffer_);
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
-      if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() processAudioWindow time=" << elapsed_time_ms << std::endl;
+      if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() processAudioWindow time=" << elapsed_time_ms << std::endl;
       
       
       // Shift data by one step
@@ -152,7 +152,7 @@ StreamingState::feedAudioContent(const short* buffer,
       t_end = std::chrono::high_resolution_clock::now();
 
       elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
-      if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() shift_buffer_left time=" << elapsed_time_ms << std::endl;
+      if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() shift_buffer_left time=" << elapsed_time_ms << std::endl;
 
     }
 
@@ -183,11 +183,11 @@ StreamingState::finishStreamWithMetadata()
 void
 StreamingState::processAudioWindow(const vector<float>& buf)
 {
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() <<  " " << stream_id_ <<" " <<std::this_thread::get_id() << " StreamingState::processAudioWindow() start buf=" << buf.size() << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() <<  " " << stream_id_ <<" " <<std::this_thread::get_id() << " StreamingState::processAudioWindow() start buf=" << buf.size() << std::endl;
   // Compute MFCC features
   vector<float> mfcc;
   mfcc.reserve(model_->n_features_);
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processAudioWindow() compute_mfcc" << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processAudioWindow() compute_mfcc" << std::endl;
 
   auto t_start = std::chrono::high_resolution_clock::now();
   model_->compute_mfcc(buf, mfcc, do_profiling_);
@@ -195,7 +195,7 @@ StreamingState::processAudioWindow(const vector<float>& buf)
 
   auto elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
 
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processAudioWindow() compute_mfcc complete mfccSize=" << mfcc.size() << " mfccTime=" << elapsed_time_ms << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processAudioWindow() compute_mfcc complete mfccSize=" << mfcc.size() << " mfccTime=" << elapsed_time_ms << std::endl;
   pushMfccBuffer(mfcc);
 }
 
@@ -235,7 +235,7 @@ copy_up_to_n(InputIt from_begin, InputIt from_end, OutputIt to_begin, int max_el
 void
 StreamingState::pushMfccBuffer(const vector<float>& buf)
 {
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " <<std::this_thread::get_id() << " StreamingState::pushMfccBuffer() start mfccSize=" << buf.size() << " mfcc_buffer_.size=" << mfcc_buffer_.size() << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " <<std::this_thread::get_id() << " StreamingState::pushMfccBuffer() start mfccSize=" << buf.size() << " mfcc_buffer_.size=" << mfcc_buffer_.size() << std::endl;
   auto start = buf.begin();
   auto end = buf.end();
   while (start != end) {
@@ -256,7 +256,7 @@ StreamingState::pushMfccBuffer(const vector<float>& buf)
 void
 StreamingState::processMfccWindow(const vector<float>& buf)
 {
-  if(do_profiling_) std::cout <<  timeSinceEpochMillisec() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() start bufSize=" << buf.size() << " batch_buffer_.size=" << batch_buffer_.size() << std::endl;
+  if(do_profiling_) std::cout <<  timeSinceEpochMillisec2() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() start bufSize=" << buf.size() << " batch_buffer_.size=" << batch_buffer_.size() << std::endl;
   auto start = buf.begin();
   auto end = buf.end();
   while (start != end) {
@@ -266,20 +266,20 @@ StreamingState::processMfccWindow(const vector<float>& buf)
     assert(batch_buffer_.size() <= model_->n_steps_ * model_->mfcc_feats_per_timestep_);
 
     // If we have a full batch
-    if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() batch_buffer_.size=" << batch_buffer_.size() << " /// "  << (model_->n_steps_ * model_->mfcc_feats_per_timestep_) << std::endl;
+    if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() batch_buffer_.size=" << batch_buffer_.size() << " /// "  << (model_->n_steps_ * model_->mfcc_feats_per_timestep_) << std::endl;
 
     if (batch_buffer_.size() == model_->n_steps_ * model_->mfcc_feats_per_timestep_) {
       processBatch(batch_buffer_, model_->n_steps_);
       batch_buffer_.resize(0);
     }
   }
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
 }
 
 void
 StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
 {
-  if(do_profiling_) std::cout <<  timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processBatch() start bufSize=" << buf.size() << std::endl;
+  if(do_profiling_) std::cout <<  timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processBatch() start bufSize=" << buf.size() << std::endl;
   vector<float> logits;
   auto t_start = std::chrono::high_resolution_clock::now();
 
@@ -293,7 +293,7 @@ StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
   auto t_end = std::chrono::high_resolution_clock::now();
   double elapsed_time_ms_infer = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
 
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processBatch() model_->infer complete inferTime=" << elapsed_time_ms_infer << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processBatch() model_->infer complete inferTime=" << elapsed_time_ms_infer << std::endl;
 
   const size_t num_classes = model_->alphabet_.GetSize() + 1; // +1 for blank
   const int n_frames = logits.size() / (ModelState::BATCH_SIZE * num_classes);
@@ -301,7 +301,7 @@ StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
   // Convert logits to double
   vector<double> inputs(logits.begin(), logits.end());
 
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processBatch() decoder_state_.next()" << std::endl;
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processBatch() decoder_state_.next()" << std::endl;
   t_start = std::chrono::high_resolution_clock::now();
 
   decoder_state_.next(inputs.data(),
@@ -309,7 +309,7 @@ StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
                       num_classes);
   t_end = std::chrono::high_resolution_clock::now();
   double elapsed_time_ms_decoder = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processBatch() decoder_state_.next() COMPLETE inferTime=" << elapsed_time_ms_infer << " decoderNext=" << elapsed_time_ms_decoder  << std::endl;                      
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processBatch() decoder_state_.next() COMPLETE inferTime=" << elapsed_time_ms_infer << " decoderNext=" << elapsed_time_ms_decoder  << std::endl;                      
 }
 
 int
@@ -414,8 +414,8 @@ DS_CreateStream(ModelState* aCtx,
   if(ctx->do_profiling_) {
     profiling_flag = true;
     ctx->stream_id_ = rand() % 10000;
-    std::cout <<  timeSinceEpochMillisec() << " " << std::this_thread::get_id() << " profiling  stream_id=" << ctx->stream_id_ << std::endl;
-    std::cout <<  timeSinceEpochMillisec() << " " << ctx->stream_id_ << " " << std::this_thread::get_id() <<  " n_steps_=" << ctx->model_->n_steps_ << " n_context_=" << aCtx->n_context_ << " n_features_=" << aCtx->n_features_ << " mfcc_feats_per_timestep_=" << ctx->model_->mfcc_feats_per_timestep_ << std::endl;
+    std::cout <<  timeSinceEpochMillisec2() << " " << std::this_thread::get_id() << " profiling  stream_id=" << ctx->stream_id_ << std::endl;
+    std::cout <<  timeSinceEpochMillisec2() << " " << ctx->stream_id_ << " " << std::this_thread::get_id() <<  " n_steps_=" << ctx->model_->n_steps_ << " n_context_=" << aCtx->n_context_ << " n_features_=" << aCtx->n_features_ << " mfcc_feats_per_timestep_=" << ctx->model_->mfcc_feats_per_timestep_ << std::endl;
   }
   else ctx->stream_id_ = 0;
 
