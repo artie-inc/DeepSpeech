@@ -29,7 +29,7 @@ TFModelState::~TFModelState()
   delete mmap_env_;
 }
 
-uint64_t timeSinceEpochMillisec() {
+uint64_t timeSinceEpochMillisec3() {
   using namespace std::chrono;
   return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
@@ -330,7 +330,7 @@ TFModelState::infer(const std::vector<float>& mfcc,
   t_start = std::chrono::high_resolution_clock::now();
 
   if(doProfile) {
-    std::cout << timeSinceEpochMillisec() << " " << std::this_thread::get_id()
+    std::cout << timeSinceEpochMillisec3() << " " << std::this_thread::get_id()
     << " TFModelState::infer() "
     << " tensors=" << elapsed_time_ms_tensors 
     << " sess=" << elapsed_time_ms_sess 
