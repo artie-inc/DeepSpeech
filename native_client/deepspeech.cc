@@ -269,47 +269,12 @@ StreamingState::processMfccWindow(const vector<float>& buf)
     if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() batch_buffer_.size=" << batch_buffer_.size() << " /// "  << (model_->n_steps_ * model_->mfcc_feats_per_timestep_) << std::endl;
 
     if (batch_buffer_.size() == model_->n_steps_ * model_->mfcc_feats_per_timestep_) {
-<<<<<<< HEAD
-      std::this_thread::sleep_for(std::chrono::seconds(5));
-      std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 555555555\n";
-      std::this_thread::sleep_for(std::chrono::seconds(5));
-      std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 444444444\n";
-      break;
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 333333333\n";
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 222222222\n";
-||||||| constructed merge base
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() 555555555" << std::endl;
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " << std::this_thread::get_id() << " StreamingState::processMfccWindow() 444444444" << std::endl;
-      // break;
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 333333333\n";
-      // std::this_thread::sleep_for(std::chrono::seconds(5));
-      // std::cout << std::this_thread::get_id() << " StreamingState::processMfccWindow() 222222222\n";
-=======
->>>>>>> Removed debug output.
       processBatch(batch_buffer_, model_->n_steps_);
       batch_buffer_.resize(0);
     }
   }
-<<<<<<< HEAD
-<<<<<<< HEAD
-  // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
-||||||| constructed merge base
-  // std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
-}
-=======
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
-||||||| constructed merge base
-  if(do_profiling_) std::cout << timeSinceEpochMillisec() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
-=======
   if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " <<  std::this_thread::get_id() << " StreamingState::processMfccWindow() END" << std::endl;
->>>>>>> renamed profiling current time in millis function to avoid errors when making debug builds
 }
->>>>>>> added more profiling code, including the ability to profile a sample of entire streams
 
 void
 StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
