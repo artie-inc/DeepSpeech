@@ -851,7 +851,8 @@ def export():
 
     
     #mapping = {no_device(v.op.name): v for v in tfv1.global_variables()}
-    map3 = {fixup(no_device(v.op.name)): v for v in tfv1.global_variables()}
+    # map3 = {fixup(no_device(v.op.name)): v for v in tfv1.global_variables()}
+    map3 = {no_device(v.op.name): v for v in tfv1.global_variables()}
     print("#### no_device ####")
     for i in map3.items():
         print(i)
