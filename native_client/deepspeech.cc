@@ -96,6 +96,8 @@ struct StreamingState {
   void pushMfccBuffer(const vector<float>& buf);
   void addZeroMfccWindow();
   void processBatch(const vector<float>& buf, unsigned int n_steps);
+  void processAudioWindowAndShift();
+  void feedAudioContentFloat(const float* buffer, unsigned int buffer_size);
 };
 
 StreamingState::StreamingState()
@@ -138,26 +140,59 @@ StreamingState::feedAudioContent(const short* buffer,
 
     // If the buffer is full, process and shift it
     if (audio_buffer_.size() == model_->audio_win_len_) {
-      auto t_start = std::chrono::high_resolution_clock::now();
-      processAudioWindow(audio_buffer_);
-      auto t_end = std::chrono::high_resolution_clock::now();
-      double elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
-      if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() processAudioWindow time=" << elapsed_time_ms << std::endl;
-      
-      
-      // Shift data by one step
-      t_start = std::chrono::high_resolution_clock::now();
-
-      shift_buffer_left(audio_buffer_, model_->audio_win_step_);
-      t_end = std::chrono::high_resolution_clock::now();
-
-      elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
-      if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() shift_buffer_left time=" << elapsed_time_ms << std::endl;
+      processAudioWindowAndShift();
 
     }
 
     // Repeat until buffer empty
   }
+}
+
+
+void
+StreamingState::feedAudioContentFloat(const float* buffer,
+                                 unsigned int buffer_size)
+{
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() start buffer_size=" << buffer_size << std::endl;
+  // Consume all the data that was passed in, processing full buffers if needed
+  while (buffer_size > 0) {
+    while (buffer_size > 0 && audio_buffer_.size() < model_->audio_win_len_) {
+      audio_buffer_.push_back(*buffer);
+      ++buffer;
+      --buffer_size;
+      //if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() looped buffer_size=" << buffer_size << " audio_buffer_.size()=" << audio_buffer_.size() << std::endl;
+      
+    }
+
+    // If the buffer is full, process and shift it
+    if (audio_buffer_.size() == model_->audio_win_len_) {
+      processAudioWindowAndShift();
+    }
+
+    // Repeat until buffer empty
+  }
+}
+
+
+void
+StreamingState::processAudioWindowAndShift()
+{
+  auto t_start = std::chrono::high_resolution_clock::now();
+  processAudioWindow(audio_buffer_);
+  auto t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() processAudioWindow time=" << elapsed_time_ms << std::endl;
+  
+  
+  // Shift data by one step
+  t_start = std::chrono::high_resolution_clock::now();
+
+  shift_buffer_left(audio_buffer_, model_->audio_win_step_);
+  t_end = std::chrono::high_resolution_clock::now();
+
+  elapsed_time_ms = std::chrono::duration<double,  std::milli>(t_end-t_start).count();
+  if(do_profiling_) std::cout << timeSinceEpochMillisec2() << " " << stream_id_ << " " << std::this_thread::get_id() << " StreamingState::feedAudioContent() shift_buffer_left time=" << elapsed_time_ms << std::endl;
+
 }
 
 char*
@@ -438,6 +473,15 @@ DS_FeedAudioContent(StreamingState* aSctx,
 {
   aSctx->feedAudioContent(aBuffer, aBufferSize);
 }
+
+void
+DS_FeedAudioContentFloat(StreamingState* aSctx,
+                    const float* aBuffer,
+                    unsigned int aBufferSize)
+{
+  aSctx->feedAudioContentFloat(aBuffer, aBufferSize);
+}
+
 
 char*
 DS_IntermediateDecode(StreamingState* aSctx)

@@ -193,6 +193,19 @@ int DS_CreateStream(ModelState* aCtx,
 DEEPSPEECH_EXPORT
 void DS_FeedAudioContent(StreamingState* aSctx,
                          const short* aBuffer,
+                        unsigned int aBufferSize);
+
+/**
+ * @brief Feed audio samples to an ongoing streaming inference.
+ *
+ * @param aSctx A streaming state pointer returned by {@link DS_CreateStream()}.
+ * @param aBuffer An array of 16-bit, mono raw audio samples at the
+ *                appropriate sample rate (matching what the model was trained on).
+ * @param aBufferSize The number of samples in @p aBuffer.
+ */
+DEEPSPEECH_EXPORT
+void DS_FeedAudioContentFloat(StreamingState* aSctx,
+                         const float* aBuffer,
                          unsigned int aBufferSize);
 
 /**
