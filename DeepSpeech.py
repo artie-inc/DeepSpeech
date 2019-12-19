@@ -90,7 +90,7 @@ def dense(name, x, units, dropout_rate=None, relu=True, device_num=""):
 def rnn_impl_lstmblockfusedcell(x, seq_length, previous_state, reuse, deviceNum):
     with tfv1.variable_scope('cudnn_lstm/rnn/multi_rnn_cell/cell_0'):
         fw_cell = tf.contrib.rnn.LSTMBlockFusedCell(Config.n_cell_dim,
-                                                    forget_bias=1.0,
+                                                    forget_bias=0,
                                                     reuse=reuse,
                                                     name='cudnn_compatible_lstm_cell'+device_token(deviceNum))
 
