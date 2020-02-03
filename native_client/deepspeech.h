@@ -220,6 +220,20 @@ DEEPSPEECH_EXPORT
 char* DS_IntermediateDecode(StreamingState* aSctx);
 
 /**
+ * @brief Compute the intermediate decoding of an ongoing streaming inference.
+ *        This is an expensive process as the decoder implementation isn't
+ *        currently capable of streaming, so it always starts from the beginning
+ *        of the audio.
+ *
+ * @param aSctx A streaming state pointer returned by {@link DS_CreateStream()}.
+ *
+ * @return The STT intermediate result. The user is responsible for freeing the
+ *         string using {@link DS_FreeString()}.
+ */
+DEEPSPEECH_EXPORT
+Metadata* DS_IntermediateDecodeWithMetadata(StreamingState* aSctx);
+
+/**
  * @brief Signal the end of an audio signal to an ongoing streaming
  *        inference, returns the STT result over the whole audio signal.
  *
