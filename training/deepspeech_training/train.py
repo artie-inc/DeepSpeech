@@ -50,12 +50,8 @@ def variable_on_cpu(name, shape, initializer):
     # Use the /cpu:0 device for scoped operations
     with tf.device(Config.cpu_device):
         # Create or get apropos variable
-        print(name)
         var = tfv1.get_variable(name=name, shape=shape, initializer=initializer)
     return var
-
-def device_token(device_num):
-    return "--DEVICE_" + device_num + "--"
 
 def create_overlapping_windows(batch_x):
     batch_size = tf.shape(input=batch_x)[0]
@@ -78,9 +74,7 @@ def create_overlapping_windows(batch_x):
 
 
 def dense(name, x, units, dropout_rate=None, relu=True):
-    print("DENSE()")
-    token  = device_token(device_num)
-    with tfv1.variable_scope(name+token):
+    with tfv1.variable_scope(name):
         bias = variable_on_cpu('bias', [units], tfv1.zeros_initializer())
         weights = variable_on_cpu('weights', [x.shape[-1], units], tfv1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
 
@@ -95,12 +89,12 @@ def dense(name, x, units, dropout_rate=None, relu=True):
     return output
 
 
-def rnn_impl_lstmblockfusedcell(x, seq_length, previous_state, reuse, device_num):
+def rnn_impl_lstmblockfusedcell(x, seq_length, previous_state, reuse):
     with tfv1.variable_scope('cudnn_lstm/rnn/multi_rnn_cell/cell_0'):
         fw_cell = tf.contrib.rnn.LSTMBlockFusedCell(Config.n_cell_dim,
                                                     forget_bias=0,
                                                     reuse=reuse,
-                                                    name='cudnn_compatible_lstm_cell'+device_token(device_num))
+                                                    name='cudnn_compatible_lstm_cell')
 
         output, output_state = fw_cell(inputs=x,
                                        dtype=tf.float32,
@@ -160,7 +154,7 @@ def rnn_impl_static_rnn(x, seq_length, previous_state, reuse):
     return output, output_state
 
 
-def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, previous_state=None, overlap=True, rnn_impl=rnn_impl_lstmblockfusedcell, , device_num=0):
+def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, previous_state=None, overlap=True, rnn_impl=rnn_impl_lstmblockfusedcell):
     layers = {}
 
     # Input shape: [batch_size, n_steps, n_input + 2*n_input*n_context]
@@ -182,13 +176,11 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
     batch_x4 = tf.reshape(batch_x3, [-1, Config.n_input + 2*Config.n_input*Config.n_context]) # (n_steps*batch_size, n_input + 2*n_input*n_context)
     layers['input_reshaped'] = batch_x4
 
-    print("DEVICE_NUM={}".format(device_num))
-
     # The next three blocks will pass `batch_x` through three hidden layers with
     # clipped RELU activation and dropout.
-    layers['layer_1'] = layer_1 = dense('layer_1', batch_x, Config.n_hidden_1, dropout_rate=dropout[0], device_num=device_num)
-    layers['layer_2'] = layer_2 = dense('layer_2', layer_1, Config.n_hidden_2, dropout_rate=dropout[1], device_num=device_num)
-    layers['layer_3'] = layer_3 = dense('layer_3', layer_2, Config.n_hidden_3, dropout_rate=dropout[2], device_num=device_num)
+    layers['layer_1'] = layer_1 = dense('layer_1', batch_x, Config.n_hidden_1, dropout_rate=dropout[0])
+    layers['layer_2'] = layer_2 = dense('layer_2', layer_1, Config.n_hidden_2, dropout_rate=dropout[1])
+    layers['layer_3'] = layer_3 = dense('layer_3', layer_2, Config.n_hidden_3, dropout_rate=dropout[2])
 
     # `layer_3` is now reshaped into `[n_steps, batch_size, 2*n_cell_dim]`,
     # as the LSTM RNN expects its input to be of shape `[max_time, batch_size, input_size]`.
@@ -196,7 +188,7 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
 
     # Run through parametrized RNN implementation, as we use different RNNs
     # for training and inference
-    output, output_state = rnn_impl(layer_3_2, seq_length, previous_state, reuse, device_num)
+    output, output_state = rnn_impl(layer_3_2, seq_length, previous_state, reuse)
 
     # Reshape output from a tensor of shape [n_steps, batch_size, n_cell_dim]
     # to a tensor of shape [n_steps*batch_size, n_cell_dim]
@@ -205,10 +197,10 @@ def create_model(batch_x, seq_length, dropout, reuse=False, batch_size=None, pre
     layers['rnn_output_state'] = output_state
 
     # Now we feed `output` to the fifth hidden layer with clipped RELU activation
-    layers['layer_5'] = layer_5 = dense('layer_5', output2, Config.n_hidden_5, dropout_rate=dropout[5], device_num=device_num)
+    layers['layer_5'] = layer_5 = dense('layer_5', output2, Config.n_hidden_5, dropout_rate=dropout[5])
 
     # Now we apply a final linear layer creating `n_classes` dimensional vectors, the logits.
-    layers['layer_6'] = layer_6 = dense('layer_6', layer_5, Config.n_hidden_6, relu=False, device_num=device_num)
+    layers['layer_6'] = layer_6 = dense('layer_6', layer_5, Config.n_hidden_6, relu=False)
 
     # Finally we reshape layer_6 from a tensor of shape [n_steps*batch_size, n_hidden_6]
     # to the slightly more useful shape [n_steps, batch_size, n_hidden_6].
@@ -661,7 +653,7 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
     batch_size = batch_size if batch_size > 0 else None
 
     # Create feature computation graph
-    with tf.device("/cpu:0"):
+    with tf.device(Config.cpu_device):
         input_samples = tfv1.placeholder(tf.float32, [Config.audio_window_samples], 'input_samples')
         samples = tf.expand_dims(input_samples, -1)
         mfccs, _ = samples_to_mfccs(samples, FLAGS.audio_sample_rate)
@@ -670,7 +662,6 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
     # for d in ['/device:GPU:0', '/device:GPU:1', '/device:GPU:2', '/device:GPU:3']:
     for d in ['/device:GPU:0']:
         with tf.device(d):
-            device_num=d[-1]
 
             # Input tensor will be of shape [batch_size, n_steps, 2*n_context+1, n_input]
             # This shape is read by the native_client in DS_CreateModel to know the
@@ -702,8 +693,7 @@ def create_inference_graph(batch_size=1, n_steps=16, tflite=False):
                                         dropout=no_dropout,
                                         previous_state=previous_state,
                                         overlap=False,
-                                        rnn_impl=rnn_impl,
-                                        device_num=device_num)
+                                        rnn_impl=rnn_impl)
 
             # TF Lite runtime will check that input dimensions are 1, 2 or 4
             # by default we get 3, the middle one being batch_size which is forced to
