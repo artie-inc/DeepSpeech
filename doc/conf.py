@@ -40,7 +40,7 @@ import semver
 # -- Project information -----------------------------------------------------
 
 project = u'DeepSpeech'
-copyright = '2019, Mozilla Corporation'
+copyright = '2019-2020, Mozilla Corporation'
 author = 'Mozilla Corporation'
 
 with open('../VERSION', 'r') as ver:
@@ -104,7 +104,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['.build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['.build', 'Thumbs.db', '.DS_Store', 'node_modules']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'

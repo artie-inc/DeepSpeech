@@ -11,9 +11,8 @@
 
 struct TFModelState : public ModelState
 {
-  tensorflow::MemmappedEnv* mmap_env_;
-  tensorflow::Session* session_;
-  std::unique_ptr<tensorflow::Session> tf_session_;
+  std::unique_ptr<tensorflow::MemmappedEnv> mmap_env_;
+  std::unique_ptr<tensorflow::Session> session_;
   std::unique_ptr<tensorflow::Session> batching_session_;
   tensorflow::GraphDef graph_def_;
 
@@ -21,7 +20,6 @@ struct TFModelState : public ModelState
   virtual ~TFModelState();
 
   virtual int init(const char* model_path,
-                   unsigned int beam_width,
                    int max_batch_size,
                    int batch_timeout_micros,
                    int num_batch_threads

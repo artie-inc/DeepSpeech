@@ -23,17 +23,17 @@ Please refer to your system's documentation on how to install these dependencies
 CUDA dependency
 ^^^^^^^^^^^^^^^
 
-The GPU capable builds (Python, NodeJS, C++, etc) depend on the same CUDA runtime as upstream TensorFlow. Currently with TensorFlow 1.14 it depends on CUDA 10.0 and CuDNN v7.5. `See the TensorFlow documentation <https://www.tensorflow.org/install/gpu>`_.
+The GPU capable builds (Python, NodeJS, C++, etc) depend on the same CUDA runtime as upstream TensorFlow. Currently with TensorFlow 1.15 it depends on CUDA 10.0 and CuDNN v7.6. `See the TensorFlow documentation <https://www.tensorflow.org/install/gpu>`_.
 
 Getting the pre-trained model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to use the pre-trained English model for performing speech-to-text, you can download it (along with other important inference material) from the DeepSpeech `releases page <https://github.com/mozilla/DeepSpeech/releases>`_. Alternatively, you can run the following command to download and unzip the model files in your current directory:
+If you want to use the pre-trained English model for performing speech-to-text, you can download it (along with other important inference material) from the DeepSpeech `releases page <https://github.com/mozilla/DeepSpeech/releases>`_. Alternatively, you can run the following command to download the model files in your current directory:
 
 .. code-block:: bash
 
-   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.6.1/deepspeech-0.6.1-models.tar.gz
-   tar xvfz deepspeech-0.6.1-models.tar.gz
+   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.7.0/deepspeech-0.7.0-models.pbmm
+   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.7.0/deepspeech-0.7.0-models.scorer
 
 Model compatibility
 ^^^^^^^^^^^^^^^^^^^
@@ -106,9 +106,9 @@ Note: the following command assumes you `downloaded the pre-trained model <#gett
 
 .. code-block:: bash
 
-   deepspeech --model models/output_graph.pbmm --lm models/lm.binary --trie models/trie --audio my_audio_file.wav
+   deepspeech --model deepspeech-0.7.0-models.pbmm --scorer deepspeech-0.7.0-models.scorer --audio my_audio_file.wav
 
-The arguments ``--lm`` and ``--trie`` are optional, and represent a language model.
+The ``--scorer`` argument is optional, and represents an external language model to be used when transcribing the audio.
 
 See :github:`client.py <native_client/python/client.py>` for an example of how to use the package programatically.
 
@@ -125,6 +125,8 @@ Please note that as of now, we support:
  - Node.JS versions 4 to 13.
  - Electron.JS versions 1.6 to 7.1
 
+TypeScript support is also provided.
+
 Alternatively, if you're using Linux and have a supported NVIDIA GPU, you can install the GPU specific package as follows:
 
 .. code-block:: bash
@@ -133,7 +135,7 @@ Alternatively, if you're using Linux and have a supported NVIDIA GPU, you can in
 
 See the `release notes <https://github.com/mozilla/DeepSpeech/releases>`_ to find which GPUs are supported. Please ensure you have the required `CUDA dependency <#cuda-dependency>`_.
 
-See :github:`client.js <native_client/javascript/client.js>` for an example of how to use the bindings.
+See :github:`client.ts <native_client/javascript/client.ts>` for an example of how to use the bindings.
 
 Using the Command-Line client
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,13 +158,15 @@ also, if you need some binaries different than current master, like ``v0.2.0-alp
 
    python3 util/taskcluster.py --branch "v0.2.0-alpha.6" --target "."
 
-The script ``taskcluster.py`` will download ``native_client.tar.xz`` (which includes the ``deepspeech`` binary, ``generate_trie`` and associated libraries) and extract it into the current folder. Also, ``taskcluster.py`` will download binaries for Linux/x86_64 by default, but you can override that behavior with the ``--arch`` parameter. See the help info with ``python util/taskcluster.py -h`` for more details. Specific branches of DeepSpeech or TensorFlow can be specified as well.
+The script ``taskcluster.py`` will download ``native_client.tar.xz`` (which includes the ``deepspeech`` binary and associated libraries) and extract it into the current folder. Also, ``taskcluster.py`` will download binaries for Linux/x86_64 by default, but you can override that behavior with the ``--arch`` parameter. See the help info with ``python util/taskcluster.py -h`` for more details. Specific branches of DeepSpeech or TensorFlow can be specified as well.
+
+Alternatively you may manually download the ``native_client.tar.xz`` from the [releases](https://github.com/mozilla/DeepSpeech/releases).
 
 Note: the following command assumes you `downloaded the pre-trained model <#getting-the-pre-trained-model>`_.
 
 .. code-block:: bash
 
-   ./deepspeech --model models/output_graph.pbmm --lm models/lm.binary --trie models/trie --audio audio_input.wav
+   ./deepspeech --model deepspeech-0.7.0-models.pbmm --scorer deepspeech-0.7.0-models.scorer --audio audio_input.wav
 
 See the help output with ``./deepspeech -h`` and the :github:`native client README <native_client/README.rst>` for more details.
 

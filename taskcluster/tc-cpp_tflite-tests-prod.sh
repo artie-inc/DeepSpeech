@@ -2,10 +2,6 @@
 
 set -xe
 
-#TODO: Remove after 0.6.1
-export DEEPSPEECH_PROD_MODEL=https://github.com/lissyx/DeepSpeech/releases/download/v0.6.0/output_graph.tflite
-export DEEPSPEECH_PROD_MODEL_MMAP=https://github.com/lissyx/DeepSpeech/releases/download/v0.6.0/output_graph.tflite
-
 source $(dirname "$0")/tc-tests-utils.sh
 
 bitrate=$1
@@ -22,6 +18,10 @@ download_material "${TASKCLUSTER_TMP_DIR}/ds"
 
 export PATH=${TASKCLUSTER_TMP_DIR}/ds/:$PATH
 
-check_tensorflow_version
+if [ "${OS}" = "Darwin" ]; then
+    export DYLD_LIBRARY_PATH=$TESTS_BREW/lib/:$DYLD_LIBRARY_PATH
+fi;
+
+check_versions
 
 run_prodtflite_inference_tests "${bitrate}"

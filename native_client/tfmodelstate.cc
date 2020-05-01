@@ -26,7 +26,6 @@ TFModelState::~TFModelState()
       std::cerr << "Error closing TensorFlow session: " << status << std::endl;
     }
   }
-  delete mmap_env_;
 }
 
 uint64_t timeSinceEpochMillisec3() {
@@ -37,12 +36,11 @@ uint64_t timeSinceEpochMillisec3() {
 
 int
 TFModelState::init(const char* model_path,
-                   unsigned int beam_width,
                    int max_batch_size,
                    int batch_timeout_micros,
                    int num_batch_threads)
 {
-  int err = ModelState::init(model_path, beam_width, max_batch_size, batch_timeout_micros, num_batch_threads);
+  int err = ModelState::init(model_path, max_batch_size, batch_timeout_micros, num_batch_threads);
   if (err != DS_ERR_OK) {
     return err;
   }
@@ -50,7 +48,7 @@ TFModelState::init(const char* model_path,
   Status status;
   SessionOptions options;
 
-  mmap_env_ = new MemmappedEnv(Env::Default());
+  mmap_env_.reset(new MemmappedEnv(Env::Default()));
 
   bool is_mmap = std::string(model_path).find(".pbmm") != std::string::npos;
   if (!is_mmap) {
@@ -65,9 +63,7 @@ TFModelState::init(const char* model_path,
     options.config.mutable_graph_options()
       ->mutable_optimizer_options()
       ->set_opt_level(::OptimizerOptions::L0);
-
-    options.env = mmap_env_;
-    
+    options.env = mmap_env_.get();
   }
 
   options.config.mutable_graph_options()
@@ -77,13 +73,16 @@ TFModelState::init(const char* model_path,
   options.config.set_allow_soft_placement(true);
   options.config.set_log_device_placement(true);
 
-
-  status = NewSession(options, &session_);
+  Session* session;
+  status = NewSession(options, &session);
   if (!status.ok()) {
     std::cerr << status << std::endl;
     return DS_ERR_FAIL_INIT_SESS;
   }
-  std::cout << "TFModelState::init() created NewSession" << " typeid=" << typeid(session_).name() << std::endl;
+  session_.reset(session);
+
+
+  std::cout << "TFModelState::init() created NewSession" << " typeid=" << typeid(session).name() << std::endl;
 
   if(max_batch_size > 1) {
     tensorflow::serving::BasicBatchScheduler<tensorflow::serving::BatchingSessionTask>::Options schedule_options;
@@ -99,15 +98,14 @@ TFModelState::init(const char* model_path,
     tensorflow::serving::BatchingSessionOptions batching_session_options;
     batching_session_options.allowed_batch_sizes.push_back(max_batch_size);
 
-    tf_session_ = std::unique_ptr<tensorflow::Session>(session_);
     tensorflow::serving::CreateBasicBatchingSession(schedule_options, 
-        batching_session_options, signature, std::move(tf_session_), &batching_session_);
+        batching_session_options, signature, std::move(session_), &batching_session_);
 
     std::cout << "TFModelState::init() created BatchingSession" <<  std::endl;
   }
 
   if (is_mmap) {
-    status = ReadBinaryProto(mmap_env_,
+    status = ReadBinaryProto(mmap_env_.get(),
                              MemmappedFileSystem::kMemmappedPackageDefaultGraphDef,
                              &graph_def_);
   } else {
@@ -149,6 +147,7 @@ TFModelState::init(const char* model_path,
     "metadata_sample_rate",
     "metadata_feature_win_len",
     "metadata_feature_win_step",
+    "metadata_beam_width",
     "metadata_alphabet",
   }, {}, &metadata_outputs);
   if (!status.ok()) {
@@ -161,8 +160,10 @@ TFModelState::init(const char* model_path,
   int win_step_ms = metadata_outputs[2].scalar<int>()();
   audio_win_len_ = sample_rate_ * (win_len_ms / 1000.0);
   audio_win_step_ = sample_rate_ * (win_step_ms / 1000.0);
+  int beam_width = metadata_outputs[3].scalar<int>()();
+  beam_width_ = (unsigned int)(beam_width);
 
-  string serialized_alphabet = metadata_outputs[3].scalar<string>()();
+  string serialized_alphabet = metadata_outputs[4].scalar<string>()();
   err = alphabet_.deserialize(serialized_alphabet.data(), serialized_alphabet.size());
   if (err != 0) {
     return DS_ERR_INVALID_ALPHABET;
@@ -171,6 +172,8 @@ TFModelState::init(const char* model_path,
   assert(sample_rate_ > 0);
   assert(audio_win_len_ > 0);
   assert(audio_win_step_ > 0);
+  assert(beam_width_ > 0);
+  assert(alphabet_.GetSize() > 0);
 
   for (int i = 0; i < graph_def_.node_size(); ++i) {
     NodeDef node = graph_def_.node(i);
