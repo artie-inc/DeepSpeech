@@ -288,7 +288,7 @@ TFModelState::infer(const std::vector<float>& mfcc,
     session_to_run = batching_session_.get();
   }
   else {
-    session_to_run = session_;
+    session_to_run = session_.get();
   }
 
   t_end = std::chrono::high_resolution_clock::now();
