@@ -98,8 +98,11 @@ TFModelState::init(const char* model_path,
     tensorflow::serving::BatchingSessionOptions batching_session_options;
     batching_session_options.allowed_batch_sizes.push_back(max_batch_size);
 
+    std::unique_ptr<tensorflow::Session> tf_session;
+    tf_session = std::unique_ptr<tensorflow::Session>(session);
+
     tensorflow::serving::CreateBasicBatchingSession(schedule_options, 
-        batching_session_options, signature, std::move(session_), &batching_session_);
+        batching_session_options, signature, std::move(tf_session), &batching_session_);
 
     std::cout << "TFModelState::init() created BatchingSession" <<  std::endl;
   }
@@ -155,6 +158,8 @@ TFModelState::init(const char* model_path,
     return DS_ERR_MODEL_INCOMPATIBLE;
   }
 
+
+
   sample_rate_ = metadata_outputs[0].scalar<int>()();
   int win_len_ms = metadata_outputs[1].scalar<int>()();
   int win_step_ms = metadata_outputs[2].scalar<int>()();
@@ -163,11 +168,18 @@ TFModelState::init(const char* model_path,
   int beam_width = metadata_outputs[3].scalar<int>()();
   beam_width_ = (unsigned int)(beam_width);
 
+  std::cout << "TFModelState::init() sample_rate=" <<  sample_rate_ << std::endl;
+  std::cout << "TFModelState::init() win_len_ms=" << win_len_ms  << std::endl;
+  std::cout << "TFModelState::init() win_step_ms=" << win_step_ms << std::endl;
+  std::cout << "TFModelState::init() beam_width=" << beam_width  << std::endl;
+
   string serialized_alphabet = metadata_outputs[4].scalar<string>()();
   err = alphabet_.deserialize(serialized_alphabet.data(), serialized_alphabet.size());
   if (err != 0) {
     return DS_ERR_INVALID_ALPHABET;
   }
+
+ std::cout << "TFModelState::init() alphabetSize=" << alphabet_.GetSize() << std::endl;
 
   assert(sample_rate_ > 0);
   assert(audio_win_len_ > 0);
