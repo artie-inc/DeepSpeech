@@ -21,6 +21,8 @@ class DecoderState {
   std::shared_ptr<Scorer> ext_scorer_;
   std::vector<PathTrie*> prefixes_;
   std::unique_ptr<PathTrie> prefix_root_;
+  std::set<std::string> hot_words_;
+  float boost_coefficient_;
 
 public:
   DecoderState() = default;
@@ -47,7 +49,9 @@ public:
            size_t beam_size,
            double cutoff_prob,
            size_t cutoff_top_n,
-           std::shared_ptr<Scorer> ext_scorer);
+           std::shared_ptr<Scorer> ext_scorer,
+           std::set<std::string> hot_words,
+           float boost_coefficient);
 
   /* Send data to the decoder
    *
@@ -100,7 +104,9 @@ std::vector<Output> ctc_beam_search_decoder(
     size_t beam_size,
     double cutoff_prob,
     size_t cutoff_top_n,
-    std::shared_ptr<Scorer> ext_scorer);
+    std::shared_ptr<Scorer> ext_scorer,
+    std::set<std::string> hot_words,
+    float boost_coefficient);
 
 /* CTC Beam Search Decoder for batch data
  * Parameters:
@@ -131,6 +137,8 @@ ctc_beam_search_decoder_batch(
     size_t num_processes,
     double cutoff_prob,
     size_t cutoff_top_n,
-    std::shared_ptr<Scorer> ext_scorer);
+    std::shared_ptr<Scorer> ext_scorer,
+    std::set<std::string> hot_words,
+    float boost_coefficient);
 
 #endif  // CTC_BEAM_SEARCH_DECODER_H_
