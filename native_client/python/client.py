@@ -57,7 +57,7 @@ def words_from_candidate_transcript(metadata):
 
             each_word = dict()
             each_word["word"] = word
-            each_word["start_time "] = round(word_start_time, 4)
+            each_word["start_time"] = round(word_start_time, 4)
             each_word["duration"] = round(word_duration, 4)
 
             word_list.append(each_word)
@@ -107,6 +107,10 @@ def main():
                         help='Output string from extended metadata')
     parser.add_argument('--json', required=False, action='store_true',
                         help='Output json from metadata with timestamp of each word')
+    parser.add_argument('--candidate_transcripts', type=int, default=3,
+                        help='Number of candidate transcripts to include in JSON output')
+    parser.add_argument('--hot_words', type=str,
+                        help='Hot-words and their boosts.')
     args = parser.parse_args()
 
     print('Loading model from file {}'.format(args.model), file=sys.stderr)
@@ -118,7 +122,7 @@ def main():
     print('Loaded model in {:.3}s.'.format(model_load_end), file=sys.stderr)
 
     if args.beam_width:
-        ds.setModelBeamWidth(args.beam_width)
+        ds.setBeamWidth(args.beam_width)
 
     desired_sample_rate = ds.sampleRate()
 
@@ -131,6 +135,12 @@ def main():
 
         if args.lm_alpha and args.lm_beta:
             ds.setScorerAlphaBeta(args.lm_alpha, args.lm_beta)
+
+    if args.hot_words:
+        print('Adding hot-words', file=sys.stderr)
+        for word_boost in args.hot_words.split(','):
+            word,boost = word_boost.split(':')
+            ds.addHotWord(word,float(boost))
 
     fin = wave.open(args.audio, 'rb')
     fs_orig = fin.getframerate()
@@ -149,7 +159,7 @@ def main():
     if args.extended:
         print(metadata_to_string(ds.sttWithMetadata(audio, 1).transcripts[0]))
     elif args.json:
-        print(metadata_json_output(ds.sttWithMetadata(audio, 3)))
+        print(metadata_json_output(ds.sttWithMetadata(audio, args.candidate_transcripts)))
     else:
         print(ds.stt(audio))
     # sphinx-doc: python_ref_inference_stop

@@ -9,14 +9,14 @@ import os
 import tarfile
 import unicodedata
 import wave
-import xml.etree.cElementTree as ET
+import xml.etree.ElementTree as ET
 from collections import Counter
 
 import progressbar
 
 from deepspeech_training.util.downloader import SIMPLE_BAR, maybe_download
 from deepspeech_training.util.importers import validate_label_eng as validate_label
-from deepspeech_training.util.text import Alphabet
+from ds_ctcdecoder import Alphabet
 
 TUDA_VERSION = "v2"
 TUDA_PACKAGE = "german-speechdata-package-{}".format(TUDA_VERSION)
@@ -46,22 +46,18 @@ def maybe_extract(archive):
     return extracted
 
 
+def in_alphabet(c):
+    return ALPHABET.CanEncode(c) if ALPHABET else True
+
+
 def check_and_prepare_sentence(sentence):
     sentence = sentence.lower().replace("co2", "c o zwei")
     chars = []
     for c in sentence:
-        if (
-            CLI_ARGS.normalize
-            and c not in "äöüß"
-            and (ALPHABET is None or not ALPHABET.has_char(c))
-        ):
-            c = (
-                unicodedata.normalize("NFKD", c)
-                .encode("ascii", "ignore")
-                .decode("ascii", "ignore")
-            )
+        if CLI_ARGS.normalize and c not in "äöüß" and not in_alphabet(c):
+            c = unicodedata.normalize("NFKD", c).encode("ascii", "ignore").decode("ascii", "ignore")
         for sc in c:
-            if ALPHABET is not None and not ALPHABET.has_char(c):
+            if not in_alphabet(c):
                 return None
             chars.append(sc)
     return validate_label("".join(chars))
@@ -111,7 +107,7 @@ def write_csvs(extracted):
             CLI_ARGS.base_dir, "tuda-{}-{}.csv".format(TUDA_VERSION, sub_set)
         )
         print('Writing "{}"...'.format(csv_path))
-        with open(csv_path, "w") as csv_file:
+        with open(csv_path, "w", encoding="utf-8", newline="") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=FIELDNAMES)
             writer.writeheader()
             set_dir = os.path.join(extracted, sub_set)
@@ -122,6 +118,7 @@ def write_csvs(extracted):
                 sentence = list(meta.iter("cleaned_sentence"))[0].text
                 sentence = check_and_prepare_sentence(sentence)
                 if sentence is None:
+                    reasons['alphabet filter'] += 1
                     continue
                 for wav_name in wav_names:
                     sample_counter += 1

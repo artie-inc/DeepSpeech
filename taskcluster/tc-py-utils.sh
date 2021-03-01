@@ -24,7 +24,7 @@ install_pyenv()
   fi
 
   pushd ${PYENV_ROOT}
-    git checkout --quiet 20a1f0cd7a3d2f95800d8e0d5863b4e98f25f4df
+    git checkout --quiet 806b30d6ce5b263a765648fbcdd68266833b7289
   popd
 
   if [ ! -d "${PYENV_ROOT}/plugins/pyenv-alias" ]; then
@@ -72,15 +72,15 @@ maybe_setup_virtualenv_cross_arm()
   fi;
 
   if [ "${OS}" != "Linux" ]; then
-    echo "Only for Linux";
-    exit 1;
+    echo "Only for Linux/ARM arch";
+    return 0;
   fi;
 
   ARCH=$(uname -m)
 
   if [ "${ARCH}" = "x86_64" ]; then
-    echo "Not for Linux/AMD64";
-    exit 0;
+    echo "Only for Linux/ARM arch";
+    return 0;
   fi;
 
   mkdir -p ${PYENV_ROOT}/versions/${version}/envs/
@@ -191,47 +191,6 @@ pyenv_install()
   fi
 }
 
-# Hack to extract Ubuntu's 16.04 libssl 1.0.2 packages and use them during the
-# local build of Python.
-#
-# Avoid (risky) upgrade of base system, allowing to keep one task build that
-# builds all the python packages
-maybe_ssl102_py37()
-{
-    pyver=$1
-
-    unset PY37_OPENSSL
-
-    ARCH=$(uname -m)
-    case "${pyver}" in
-        3.7*|3.8*)
-            if [ "${OS}" = "Linux" -a "${ARCH}" = "x86_64" ]; then
-                if [ -d "${PY37_OPENSSL_DIR}" ]; then
-                  rm -rf "${PY37_OPENSSL_DIR}"
-                fi
-
-                mkdir -p ${PY37_OPENSSL_DIR}
-                ${WGET} -P ${TASKCLUSTER_TMP_DIR} \
-                        http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl-dev_1.0.2g-1ubuntu4.15_amd64.deb \
-                        http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.0.0_1.0.2g-1ubuntu4.15_amd64.deb
-
-                for deb in ${TASKCLUSTER_TMP_DIR}/libssl*.deb; do
-                    dpkg -x ${deb} ${PY37_OPENSSL_DIR}
-                done;
-
-                # Python configure expects things to be under lib/
-                mv ${PY37_OPENSSL_DIR}/usr/include/x86_64-linux-gnu/openssl/opensslconf.h ${PY37_OPENSSL_DIR}/usr/include/openssl/
-                mv ${PY37_OPENSSL_DIR}/lib/x86_64-linux-gnu/lib* ${PY37_OPENSSL_DIR}/usr/lib/
-                mv ${PY37_OPENSSL_DIR}/usr/lib/x86_64-linux-gnu/* ${PY37_OPENSSL_DIR}/usr/lib/
-                ln -sfn libcrypto.so.1.0.0 ${PY37_OPENSSL_DIR}/usr/lib/libcrypto.so
-                ln -sfn libssl.so.1.0.0 ${PY37_OPENSSL_DIR}/usr/lib/libssl.so
-
-                export PY37_OPENSSL="--with-openssl=${PY37_OPENSSL_DIR}/usr"
-            fi;
-        ;;
-    esac
-}
-
 maybe_numpy_min_version()
 {
     local pyver=$1
@@ -254,6 +213,10 @@ maybe_numpy_min_version()
                     export NUMPY_BUILD_VERSION="==1.17.3"
                     export NUMPY_DEP_VERSION=">=1.17.3"
                 ;;
+                3.9*)
+                    export NUMPY_BUILD_VERSION="==1.19.4"
+                    export NUMPY_DEP_VERSION=">=1.19.4"
+                ;;
             esac
         ;;
 
@@ -270,6 +233,10 @@ maybe_numpy_min_version()
                 3.8*)
                     export NUMPY_BUILD_VERSION="==1.17.3"
                     export NUMPY_DEP_VERSION=">=1.17.3,<=1.17.3"
+                ;;
+                3.9*)
+                    export NUMPY_BUILD_VERSION="==1.19.4"
+                    export NUMPY_DEP_VERSION=">=1.19.4"
                 ;;
             esac
         ;;
@@ -292,6 +259,10 @@ maybe_numpy_min_version()
                     export NUMPY_BUILD_VERSION="==1.17.3"
                     export NUMPY_DEP_VERSION=">=1.17.3,<=1.17.3"
                 ;;
+                3.9*)
+                    export NUMPY_BUILD_VERSION="==1.19.4"
+                    export NUMPY_DEP_VERSION=">=1.19.4"
+                ;;
             esac
         ;;
 
@@ -312,16 +283,31 @@ get_python_pkg_url()
     pkgname="deepspeech"
   fi
 
-  local root=$4
-  if [ -z "${root}" ]; then
-    root="${DEEPSPEECH_ARTIFACTS_ROOT}"
-  fi
-
   local platform=$(python -c 'import sys; import platform; plat = platform.system().lower(); arch = platform.machine().lower(); plat = "manylinux1" if plat == "linux" and arch == "x86_64" else plat; plat = "macosx_10_10" if plat == "darwin" else plat; plat = "win" if plat == "windows" else plat; sys.stdout.write("%s_%s" % (plat, platform.machine().lower()));')
   local whl_ds_version="$(python -c 'from pkg_resources import parse_version; print(parse_version("'${DS_VERSION}'"))')"
   local deepspeech_pkg="${pkgname}-${whl_ds_version}-cp${pyver_pkg}-cp${pyver_pkg}${py_unicode_type}-${platform}.whl"
 
-  echo "${root}/${deepspeech_pkg}"
+  echo "$(get_dependency_url ${deepspeech_pkg})"
+}
+
+get_tflite_python_pkg_name()
+{
+  # Default to deepspeech package
+  local _pkgname="deepspeech_tflite"
+
+  ARCH=$(uname -m)
+  case "${OS}:${ARCH}" in
+      Linux:armv7l|Linux:aarch64)
+          # On linux/arm or linux/aarch64 we don't produce deepspeech_tflite
+          _pkgname="deepspeech"
+      ;;
+
+      *)
+          _pkgname="deepspeech_tflite"
+      ;;
+  esac
+
+  echo "${_pkgname}"
 }
 
 extract_python_versions()
@@ -336,7 +322,7 @@ extract_python_versions()
 
   local _pyver=$(echo "${_pyver_full}" | cut -d':' -f1)
 
-  # 3.8.x => 38
+  # 3.8.x => 38 / 3.9.x => 39 
   local _pyver_pkg=$(echo "${_pyver}" | cut -d'.' -f1,2 | tr -d '.')
 
   # https://www.python.org/dev/peps/pep-3149/#proposal
@@ -347,7 +333,7 @@ extract_python_versions()
     local _pyconf="ucs2"
   elif [ "${_py_unicode_type}" = "mu" ]; then
     local _pyconf="ucs4"
-  elif [ "${_py_unicode_type}" = "" ]; then # valid for Python 3.8
+  elif [ "${_py_unicode_type}" = "" ]; then # valid for Python 3.8 and 3.9
     local _pyconf="ucs2"
   fi;
 

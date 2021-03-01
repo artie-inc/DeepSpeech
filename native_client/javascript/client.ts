@@ -3,7 +3,7 @@
 // This is required for process.versions.electron below
 /// <reference types="electron" />
 
-import Ds from "./index";
+import * as Ds from "./index";
 import * as Fs from "fs";
 import Sox from "sox-stream";
 import * as argparse from "argparse";
@@ -30,6 +30,8 @@ parser.addArgument(['--scorer'], {help: 'Path to the external scorer file'});
 parser.addArgument(['--audio'], {required: true, help: 'Path to the audio file to run (WAV format)'});
 parser.addArgument(['--version'], {action: VersionAction, nargs: 0, help: 'Print version and exits'});
 parser.addArgument(['--extended'], {action: 'storeTrue', help: 'Output string from extended metadata'});
+parser.addArgument(['--stream'], {action: 'storeTrue', help: 'Use streaming code path (for tests)'});
+parser.addArgument(['--hot_words'], {help: 'Hot-words and their boosts. Word:Boost pairs are comma-separated'});
 let args = parser.parseArgs();
 
 function totalTime(hrtimeValue: number[]): string {
@@ -70,6 +72,14 @@ if (args['scorer']) {
   }
 }
 
+if (args['hot_words']) {
+	console.error('Adding hot-words %s', args['hot_words']);
+	for (let word_boost of args['hot_words'].split(',')) {
+		let word = word_boost.split(':');
+		model.addHotWord(word[0], parseFloat(word[1]));
+	}
+}
+
 const buffer = Fs.readFileSync(args['audio']);
 const result = Wav.decode(buffer);
 
@@ -86,8 +96,7 @@ function bufferToStream(buffer: Buffer) {
   return stream;
 }
 
-let audioStream = new MemoryStream();
-bufferToStream(buffer).
+let conversionStream = bufferToStream(buffer).
   pipe(Sox({
     global: {
       'no-dither': true,
@@ -102,27 +111,49 @@ bufferToStream(buffer).
       compression: 0.0,
       type: 'raw'
     }
-  })).
-  pipe(audioStream);
+  }));
 
-audioStream.on('finish', () => {
-  let audioBuffer = audioStream.toBuffer();
+if (!args['stream']) {
+  let audioStream = new MemoryStream();
+  conversionStream.pipe(audioStream);
+  audioStream.on('finish', () => {
+    let audioBuffer = audioStream.toBuffer();
 
-  const inference_start = process.hrtime();
-  console.error('Running inference.');
-  const audioLength = (audioBuffer.length / 2) * (1 / desired_sample_rate);
+    const inference_start = process.hrtime();
+    console.error('Running inference.');
+    const audioLength = (audioBuffer.length / 2) * (1 / desired_sample_rate);
 
-  // sphinx-doc: js_ref_inference_start
-  if (args['extended']) {
-    let metadata = model.sttWithMetadata(audioBuffer, 1);
-    console.log(candidateTranscriptToString(metadata.transcripts[0]));
-    Ds.FreeMetadata(metadata);
-  } else {
-    console.log(model.stt(audioBuffer));
-  }
-  // sphinx-doc: js_ref_inference_stop
-  const inference_stop = process.hrtime(inference_start);
-  console.error('Inference took %ds for %ds audio file.', totalTime(inference_stop), audioLength.toPrecision(4));
-  Ds.FreeModel(model);
-  process.exit(0);
-});
+    // sphinx-doc: js_ref_inference_start
+    if (args['extended']) {
+      let metadata = model.sttWithMetadata(audioBuffer, 1);
+      console.log(candidateTranscriptToString(metadata.transcripts[0]));
+      Ds.FreeMetadata(metadata);
+    } else {
+      console.log(model.stt(audioBuffer));
+    }
+    // sphinx-doc: js_ref_inference_stop
+    const inference_stop = process.hrtime(inference_start);
+    console.error('Inference took %ds for %ds audio file.', totalTime(inference_stop), audioLength.toPrecision(4));
+    Ds.FreeModel(model);
+    process.exit(0);
+  });
+} else {
+  let stream  = model.createStream();
+  conversionStream.on('data', (chunk: Buffer) => {
+    stream.feedAudioContent(chunk);
+    if (args['extended']) {
+      let metadata = stream.intermediateDecodeWithMetadata();
+      console.error('intermediate: ' + candidateTranscriptToString(metadata.transcripts[0]));
+    } else {
+      console.error('intermediate: ' + stream.intermediateDecode());
+    }
+  });
+  conversionStream.on('end', () => {
+    if (args['extended']) {
+      let metadata = stream.finishStreamWithMetadata();
+      console.log(candidateTranscriptToString(metadata.transcripts[0]));
+    } else {
+      console.log(stream.finishStream());
+    }
+  });
+}

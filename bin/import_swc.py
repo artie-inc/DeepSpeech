@@ -14,7 +14,7 @@ import sys
 import tarfile
 import unicodedata
 import wave
-import xml.etree.cElementTree as ET
+import xml.etree.ElementTree as ET
 from collections import Counter
 from glob import glob
 from multiprocessing.pool import ThreadPool
@@ -24,7 +24,7 @@ import sox
 
 from deepspeech_training.util.downloader import SIMPLE_BAR, maybe_download
 from deepspeech_training.util.importers import validate_label_eng as validate_label
-from deepspeech_training.util.text import Alphabet
+from ds_ctcdecoder import Alphabet
 
 SWC_URL = "https://www2.informatik.uni-hamburg.de/nats/pub/SWC/SWC_{language}.tar"
 SWC_ARCHIVE = "SWC_{language}.tar"
@@ -170,7 +170,8 @@ def read_token(token):
 
 
 def in_alphabet(alphabet, c):
-    return True if alphabet is None else alphabet.has_char(c)
+    return alphabet.CanEncode(c) if alphabet else True
+
 
 
 ALPHABETS = {}
@@ -201,16 +202,8 @@ def label_filter(label, language):
     dont_normalize = DONT_NORMALIZE[language] if language in DONT_NORMALIZE else ""
     alphabet = get_alphabet(language)
     for c in label:
-        if (
-            CLI_ARGS.normalize
-            and c not in dont_normalize
-            and not in_alphabet(alphabet, c)
-        ):
-            c = (
-                unicodedata.normalize("NFKD", c)
-                .encode("ascii", "ignore")
-                .decode("ascii", "ignore")
-            )
+        if CLI_ARGS.normalize and c not in dont_normalize and not in_alphabet(alphabet, c):
+            c = unicodedata.normalize("NFKD", c).encode("ascii", "ignore").decode("ascii", "ignore")
         for sc in c:
             if not in_alphabet(alphabet, sc):
                 return None, "illegal character"
@@ -461,7 +454,7 @@ def write_csvs(samples, language):
         base_dir = os.path.abspath(CLI_ARGS.base_dir)
         csv_path = os.path.join(base_dir, language + "-" + sub_set + ".csv")
         print('Writing "{}"...'.format(csv_path))
-        with open(csv_path, "w") as csv_file:
+        with open(csv_path, "w", encoding="utf-8", newline="") as csv_file:
             writer = csv.DictWriter(
                 csv_file, fieldnames=FIELDNAMES_EXT if CLI_ARGS.add_meta else FIELDNAMES
             )

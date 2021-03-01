@@ -17,7 +17,7 @@ from six.moves import zip
 
 from .util.config import Config, initialize_globals
 from .util.checkpoints import load_graph_for_evaluation
-from .util.evaluate_tools import calculate_and_print_report
+from .util.evaluate_tools import calculate_and_print_report, save_samples_json
 from .util.feeding import create_dataset
 from .util.flags import create_flags, FLAGS
 from .util.helpers import check_ctcdecoder_version
@@ -40,7 +40,7 @@ def sparse_tuple_to_texts(sp_tuple, alphabet):
     for i, index in enumerate(indices):
         results[index[0]].append(values[i])
     # List of strings
-    return [alphabet.decode(res) for res in results]
+    return [alphabet.Decode(res) for res in results]
 
 
 def evaluate(test_csvs, create_model):
@@ -50,8 +50,11 @@ def evaluate(test_csvs, create_model):
     else:
         scorer = None
 
-    test_csvs = FLAGS.test_files.split(',')
-    test_sets = [create_dataset([csv], batch_size=FLAGS.test_batch_size, train_phase=False) for csv in test_csvs]
+    test_sets = [create_dataset([csv],
+                                batch_size=FLAGS.test_batch_size,
+                                train_phase=False,
+                                reverse=FLAGS.reverse_test,
+                                limit=FLAGS.limit_test) for csv in test_csvs]
     iterator = tfv1.data.Iterator.from_structure(tfv1.data.get_output_types(test_sets[0]),
                                                  tfv1.data.get_output_shapes(test_sets[0]),
                                                  output_classes=tfv1.data.get_output_classes(test_sets[0]))
@@ -62,7 +65,6 @@ def evaluate(test_csvs, create_model):
     # One rate per layer
     no_dropout = [None] * 6
     logits, _ = create_model(batch_x=batch_x,
-                             batch_size=FLAGS.test_batch_size,
                              seq_length=batch_x_len,
                              dropout=no_dropout)
 
@@ -143,8 +145,7 @@ def main(_):
     samples = evaluate(FLAGS.test_files.split(','), create_model)
 
     if FLAGS.test_output_file:
-        # Save decoded tuples as JSON, converting NumPy floats to Python floats
-        json.dump(samples, open(FLAGS.test_output_file, 'w'), default=float)
+        save_samples_json(samples, FLAGS.test_output_file)
 
 
 def run_script():

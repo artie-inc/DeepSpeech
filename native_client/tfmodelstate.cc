@@ -173,8 +173,8 @@ TFModelState::init(const char* model_path,
   std::cout << "TFModelState::init() win_step_ms=" << win_step_ms << std::endl;
   std::cout << "TFModelState::init() beam_width=" << beam_width  << std::endl;
 
-  string serialized_alphabet = metadata_outputs[4].scalar<string>()();
-  err = alphabet_.deserialize(serialized_alphabet.data(), serialized_alphabet.size());
+  string serialized_alphabet = metadata_outputs[4].scalar<tensorflow::tstring>()();
+  err = alphabet_.Deserialize(serialized_alphabet.data(), serialized_alphabet.size());
   if (err != 0) {
     return DS_ERR_INVALID_ALPHABET;
   }

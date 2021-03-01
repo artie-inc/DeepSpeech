@@ -19,9 +19,29 @@ generic_download_tarxz()
   ${WGET} ${url} -O - | ${UNXZ} | ${TAR} -C ${target_dir} -xf -
 }
 
+generic_download_targz()
+{
+  target_dir=$1
+  url=$2
+
+  if [ -z "${target_dir}" -o -z "${url}" ]; then
+    echo "Empty name for target directory or URL:"
+    echo " target_dir=${target_dir}"
+    echo " url=${url}"
+    exit 1
+  fi;
+
+  mkdir -p ${target_dir} || true
+
+  ${WGET} ${url} -O - | ${UNGZ} | ${TAR} -C ${target_dir} -xf -
+}
+
 download_native_client_files()
 {
-  generic_download_tarxz "$1" "${DEEPSPEECH_ARTIFACTS_ROOT}/native_client.tar.xz"
+  local _target_dir=$1
+  local _nc_url=$(get_dependency_url "native_client.tar.xz")
+
+  generic_download_tarxz "${_target_dir}" "${_nc_url}"
 }
 
 set_ldc_sample_filename()
@@ -43,12 +63,47 @@ set_ldc_sample_filename()
   esac
 }
 
+get_dependency_url()
+{
+  local _file=$1
+  all_deps="$(curl -s https://community-tc.services.mozilla.com/api/queue/v1/task/${TASK_ID} | python -c 'import json; import sys; print(" ".join(json.loads(sys.stdin.read())["dependencies"]));')"
+
+  for dep in ${all_deps}; do
+    local has_artifact=$(curl -s https://community-tc.services.mozilla.com/api/queue/v1/task/${dep}/artifacts | python -c 'import json; import sys; has_artifact = True in [ e["name"].find("'${_file}'") > 0 for e in json.loads(sys.stdin.read())["artifacts"] ]; print(has_artifact)')
+    if [ "${has_artifact}" = "True" ]; then
+      echo "https://community-tc.services.mozilla.com/api/queue/v1/task/${dep}/artifacts/public/${_file}"
+      exit 0
+    fi;
+  done;
+
+  echo ""
+}
+
+download_dependency_file()
+{
+  local _file=$1
+  url=$(get_dependency_url "${_file}")
+
+  if [ -z "${url}" ]; then
+    echo "Unable to find an URL for ${_file}"
+    exit 1
+  fi;
+
+  ${WGET} -P "${TASKCLUSTER_TMP_DIR}" "${url}"
+}
+
 download_data()
 {
-  ${WGET} -P "${TASKCLUSTER_TMP_DIR}" "${model_source}"
-  ${WGET} -P "${TASKCLUSTER_TMP_DIR}" "${model_source_mmap}"
+  local _model_source_file=$(basename "${model_source}")
+  ${WGET} "${model_source}" -O - | gunzip --force > "${TASKCLUSTER_TMP_DIR}/${_model_source_file}"
+
+  local _model_source_mmap_file=$(basename "${model_source_mmap}")
+  ${WGET} "${model_source_mmap}" -O - | gunzip --force > "${TASKCLUSTER_TMP_DIR}/${_model_source_mmap_file}"
+
   cp ${DS_ROOT_TASK}/DeepSpeech/ds/data/smoke_test/*.wav ${TASKCLUSTER_TMP_DIR}/
   cp ${DS_ROOT_TASK}/DeepSpeech/ds/data/smoke_test/pruned_lm.scorer ${TASKCLUSTER_TMP_DIR}/kenlm.scorer
+  cp ${DS_ROOT_TASK}/DeepSpeech/ds/data/smoke_test/pruned_lm.bytes.scorer ${TASKCLUSTER_TMP_DIR}/kenlm.bytes.scorer
+
   cp -R ${DS_ROOT_TASK}/DeepSpeech/ds/native_client/test ${TASKCLUSTER_TMP_DIR}/test_sources
 }
 
@@ -99,22 +154,22 @@ verify_bazel_rebuild()
 
   mkdir -p ${TASKCLUSTER_ARTIFACTS} || true
 
-  cp ${DS_ROOT_TASK}/DeepSpeech/tf/bazel*.log ${TASKCLUSTER_ARTIFACTS}/
+  cp ${DS_ROOT_TASK}/DeepSpeech/ds/tensorflow/bazel*.log ${TASKCLUSTER_ARTIFACTS}/
 
-  spurious_rebuilds=$(grep 'Executing action' "${bazel_explain_file}" | grep 'Compiling' | grep -v -E 'no entry in the cache|unconditional execution is requested|Executing genrule //native_client:workspace_status|Compiling native_client/workspace_status.cc|Linking native_client/libdeepspeech.so' | wc -l)
+  spurious_rebuilds=$(grep 'Executing action' "${bazel_explain_file}" | grep 'Compiling' | grep -v -E 'no entry in the cache|[for host]|unconditional execution is requested|Executing genrule //native_client:workspace_status|Compiling native_client/workspace_status.cc|Linking native_client/libdeepspeech.so' | wc -l)
   if [ "${spurious_rebuilds}" -ne 0 ]; then
     echo "Bazel rebuilds some file it should not, please check."
 
     if is_patched_bazel; then
       mkdir -p ${DS_ROOT_TASK}/DeepSpeech/ckd/ds ${DS_ROOT_TASK}/DeepSpeech/ckd/tf
       tar xf ${DS_ROOT_TASK}/DeepSpeech/bazel-ckd-tf.tar --strip-components=4 -C ${DS_ROOT_TASK}/DeepSpeech/ckd/ds/
-      tar xf ${DS_ROOT_TASK}/DeepSpeech/bazel-ckd-ds.tar --strip-components=4 -C ${DS_ROOT_TASK}/DeepSpeech/ckd/tf/
+      tar xf ${DS_ROOT_TASK}/DeepSpeech/bazel-ckd-ds.tar --strip-components=4 -C ${DS_ROOT_TASK}/DeepSpeech/ds/ckd/tensorflow/
 
       echo "Making a diff between CKD files"
       mkdir -p ${TASKCLUSTER_ARTIFACTS}
-      diff -urNw ${DS_ROOT_TASK}/DeepSpeech/ckd/tf/ ${DS_ROOT_TASK}/DeepSpeech/ckd/ds/ | tee ${TASKCLUSTER_ARTIFACTS}/ckd.diff
+      diff -urNw ${DS_ROOT_TASK}/DeepSpeech/ds/ckd/tensorflow/ ${DS_ROOT_TASK}/DeepSpeech/ckd/ds/ | tee ${TASKCLUSTER_ARTIFACTS}/ckd.diff
 
-      rm -fr ${DS_ROOT_TASK}/DeepSpeech/ckd/tf/ ${DS_ROOT_TASK}/DeepSpeech/ckd/ds/
+      rm -fr ${DS_ROOT_TASK}/DeepSpeech/ds/ckd/tensorflow/ ${DS_ROOT_TASK}/DeepSpeech/ckd/ds/
     else
       echo "Cannot get CKD information from release, please use patched Bazel"
     fi;

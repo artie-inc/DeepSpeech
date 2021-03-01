@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
+import json
 from multiprocessing.dummy import Pool
-import numpy as np
 
+import numpy as np
 from attrdict import AttrDict
 
 from .flags import FLAGS
 from .text import levenshtein
-
+from .io import open_remote
 
 def pmap(fun, iterable):
     pool = Pool()
@@ -71,7 +72,7 @@ def calculate_and_print_report(wav_filenames, labels, decodings, losses, dataset
     samples.sort(key=lambda s: s.loss, reverse=True)
 
     # Then order by ascending WER/CER
-    if FLAGS.utf8:
+    if FLAGS.bytes_output_mode:
         samples.sort(key=lambda s: s.cer)
     else:
         samples.sort(key=lambda s: s.wer)
@@ -115,3 +116,13 @@ def print_report(samples, losses, wer, cer, dataset_name):
     print('Worst WER:', '\n' + '-' * 80)
     for s in worst_samples:
         print_single_sample(s)
+
+
+def save_samples_json(samples, output_path):
+    ''' Save decoded tuples as JSON, converting NumPy floats to Python floats.
+
+        We set ensure_ascii=True to prevent json from escaping non-ASCII chars
+        in the texts.
+    '''
+    with open_remote(output_path, 'w') as fout:
+        json.dump(samples, fout, default=float, ensure_ascii=False, indent=2)

@@ -1,8 +1,6 @@
 JavaScript (NodeJS / ElectronJS)
 ================================
 
-Support for TypeScript is :download:`provided in index.d.ts<../native_client/javascript/index.d.ts>`
-
 Model
 -----
 
@@ -12,7 +10,7 @@ Model
 Stream
 ------
 
-.. js:autoclass:: Stream
+.. js:autoclass:: StreamImpl
    :members:
 
 Module exported methods

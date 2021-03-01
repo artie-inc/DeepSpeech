@@ -8,7 +8,7 @@ from .helpers import secs_to_hours
 from collections import Counter
 
 def get_counter():
-    return Counter({'all': 0, 'failed': 0, 'invalid_label': 0, 'too_short': 0, 'too_long': 0, 'total_time': 0})
+    return Counter({'all': 0, 'failed': 0, 'invalid_label': 0, 'too_short': 0, 'too_long': 0, 'imported_time': 0, 'total_time': 0})
 
 def get_imported_samples(counter):
     return counter['all'] - counter['failed'] - counter['too_short'] - counter['too_long'] - counter['invalid_label']
@@ -23,7 +23,7 @@ def print_import_report(counter, sample_rate, max_secs):
         print('Skipped %d samples that were too short to match the transcript.' % counter['too_short'])
     if counter['too_long'] > 0:
         print('Skipped %d samples that were longer than %d seconds.' % (counter['too_long'], max_secs))
-    print('Final amount of imported audio: %s.' % secs_to_hours(counter['total_time'] / sample_rate))
+    print('Final amount of imported audio: %s from %s.' % (secs_to_hours(counter['imported_time'] / sample_rate), secs_to_hours(counter['total_time'] / sample_rate)))
 
 def get_importers_parser(description):
     parser = argparse.ArgumentParser(description=description)
@@ -42,15 +42,17 @@ def get_validate_label(args):
     :return: The user-supplied validate_label function
     :type: function
     """
+    # Python 3.5 does not support passing a pathlib.Path to os.path.* methods
     if 'validate_label_locale' not in args or (args.validate_label_locale is None):
         print('WARNING: No --validate_label_locale specified, your might end with inconsistent dataset.')
         return validate_label_eng
-    if not os.path.exists(os.path.abspath(args.validate_label_locale)):
+    validate_label_locale = str(args.validate_label_locale)
+    if not os.path.exists(os.path.abspath(validate_label_locale)):
         print('ERROR: Inexistent --validate_label_locale specified. Please check.')
         return None
-    module_dir = os.path.abspath(os.path.dirname(args.validate_label_locale))
+    module_dir = os.path.abspath(os.path.dirname(validate_label_locale))
     sys.path.insert(1, module_dir)
-    fname = os.path.basename(args.validate_label_locale).replace('.py', '')
+    fname = os.path.basename(validate_label_locale).replace('.py', '')
     locale_module = importlib.import_module(fname, package=None)
     return locale_module.validate_label
 

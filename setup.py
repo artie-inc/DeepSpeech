@@ -7,23 +7,14 @@ from pkg_resources import parse_version
 from setuptools import find_packages, setup
 
 
-def get_decoder_pkg_url(version, artifacts_root=None):
-    is_arm = 'arm' in platform.machine()
-    is_mac = 'darwin' in sys.platform
-    is_64bit = sys.maxsize > (2**31 - 1)
-
-    if is_arm:
-        tc_arch = 'arm64-ctc' if is_64bit else 'arm-ctc'
-    elif is_mac:
-        tc_arch = 'osx-ctc'
-    else:
-        tc_arch = 'cpu-ctc'
+def get_tc_decoder_pkg_url(version, artifacts_root):
+    assert artifacts_root
 
     ds_version = parse_version(version)
     branch = "v{}".format(version)
 
     plat = platform.system().lower()
-    arch = platform.machine()
+    arch = platform.machine().lower()
 
     if plat == 'linux' and arch == 'x86_64':
         plat = 'manylinux1'
@@ -31,19 +22,17 @@ def get_decoder_pkg_url(version, artifacts_root=None):
     if plat == 'darwin':
         plat = 'macosx_10_10'
 
-    is_ucs2 = sys.maxunicode < 0x10ffff
-    m_or_mu = 'mu' if is_ucs2 else 'm'
+    if plat == 'windows':
+        plat = 'win'
 
     # ABI does not contain m / mu anymore after Python 3.8
     if sys.version_info.major == 3 and sys.version_info.minor >= 8:
         m_or_mu = ''
+    else:
+        is_ucs2 = sys.maxunicode < 0x10ffff
+        m_or_mu = 'mu' if is_ucs2 else 'm'
 
     pyver = ''.join(str(i) for i in sys.version_info[0:2])
-
-    if not artifacts_root:
-        artifacts_root = 'https://community-tc.services.mozilla.com/api/index/v1/task/project.deepspeech.deepspeech.native_client.{branch_name}.{tc_arch_string}/artifacts/public'.format(
-            branch_name=branch,
-            tc_arch_string=tc_arch)
 
     return 'ds_ctcdecoder @ {artifacts_root}/ds_ctcdecoder-{ds_version}-cp{pyver}-cp{pyver}{m_or_mu}-{platform}_{arch}.whl'.format(
         artifacts_root=artifacts_root,
@@ -60,10 +49,7 @@ def main():
     with open(str(version_file)) as fin:
         version = fin.read().strip()
 
-    decoder_pkg_url = get_decoder_pkg_url(version)
-
     install_requires_base = [
-        'tensorflow == 1.15.2',
         'numpy',
         'progressbar2',
         'six',
@@ -83,25 +69,38 @@ def main():
         'soundfile',
     ]
 
+    decoder_pypi_dep = [
+        'ds_ctcdecoder == {}'.format(version)
+    ]
+
+    tensorflow_pypi_dep = [
+        'tensorflow == 1.15.4'
+    ]
+
     # Due to pip craziness environment variables are the only consistent way to
     # get options into this script when doing `pip install`.
     tc_decoder_artifacts_root = os.environ.get('DECODER_ARTIFACTS_ROOT', '')
     if tc_decoder_artifacts_root:
         # We're running inside the TaskCluster environment, override the decoder
         # package URL with the one we just built.
-        decoder_pkg_url = get_decoder_pkg_url(version, tc_decoder_artifacts_root)
+        decoder_pkg_url = get_tc_decoder_pkg_url(version, tc_decoder_artifacts_root)
         install_requires = install_requires_base + [decoder_pkg_url]
     elif os.environ.get('DS_NODECODER', ''):
         install_requires = install_requires_base
     else:
-        install_requires = install_requires_base + [decoder_pkg_url]
+        install_requires = install_requires_base + decoder_pypi_dep
+
+    if os.environ.get('DS_NOTENSORFLOW', ''):
+        install_requires = install_requires
+    else:
+        install_requires = install_requires + tensorflow_pypi_dep
 
     setup(
         name='deepspeech_training',
         version=version,
-        description='Training code for mozilla DeepSpeech',
+        description='Training code for DeepSpeech',
         url='https://github.com/mozilla/DeepSpeech',
-        author='Mozilla',
+        author='DeepSpeech authors',
         license='MPL-2.0',
         # Classifiers help users find your project by categorizing it.
         #

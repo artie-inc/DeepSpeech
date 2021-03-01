@@ -26,12 +26,18 @@ sys.path.insert(0, os.path.abspath('../'))
 
 autodoc_mock_imports = ['deepspeech']
 
-read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
-if read_the_docs_build:
-    import subprocess
-    subprocess.call('cd ../ && doxygen doc/doxygen-c.conf', shell=True)
-    subprocess.call('cd ../ && doxygen doc/doxygen-java.conf', shell=True)
-    subprocess.call('cd ../ && doxygen doc/doxygen-dotnet.conf', shell=True)
+# This is in fact only relevant on ReadTheDocs, but we want to run the same way
+# on our CI as in RTD to avoid regressions on RTD that we would not catch on
+# TaskCluster
+import subprocess
+parent = subprocess.check_output("cd ../ && pwd", shell=True).decode().strip()
+os.environ["PATH"] = os.path.join(parent, 'node_modules', '.bin') + ':' + os.environ["PATH"]
+subprocess.check_call('cd ../ && npm install typedoc@0.17.4 typescript@3.8.3 @types/node@13.9.x', shell=True)
+subprocess.check_call('env', shell=True)
+subprocess.check_call('which typedoc', shell=True)
+subprocess.check_call('cd ../ && doxygen doc/doxygen-c.conf', shell=True)
+subprocess.check_call('cd ../ && doxygen doc/doxygen-java.conf', shell=True)
+subprocess.check_call('cd ../ && doxygen doc/doxygen-dotnet.conf', shell=True)
 
 # -- General configuration ------------------------------------------------
 
@@ -40,8 +46,8 @@ import semver
 # -- Project information -----------------------------------------------------
 
 project = u'DeepSpeech'
-copyright = '2019-2020, Mozilla Corporation'
-author = 'Mozilla Corporation'
+copyright = '2019-2020 Mozilla Corporation, 2020 DeepSpeech authors'
+author = 'DeepSpeech authors'
 
 with open('../VERSION', 'r') as ver:
     v = ver.read().strip()
@@ -80,7 +86,9 @@ breathe_projects = {
   "deepspeech-dotnet": "xml-dotnet/",
 }
 
-js_source_path = "../native_client/javascript"
+js_source_path = "../native_client/javascript/index.ts"
+js_language = "typescript"
+jsdoc_config_path = "../native_client/javascript/tsconfig.json"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
@@ -126,7 +134,9 @@ html_theme = 'sphinx_rtd_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+  'collapse_navigation': False,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -165,7 +175,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'DeepSpeech.tex', u'DeepSpeech Documentation',
-     u'Mozilla Research', 'manual'),
+     u'DeepSpeech authors', 'manual'),
 ]
 
 

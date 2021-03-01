@@ -20,7 +20,7 @@ from deepspeech_training.util.importers import (
     get_validate_label,
     print_import_report,
 )
-from deepspeech_training.util.text import Alphabet
+from ds_ctcdecoder import Alphabet
 
 FIELDNAMES = ["wav_filename", "wav_filesize", "transcript"]
 SAMPLE_RATE = 16000
@@ -91,6 +91,7 @@ def one_sample(sample):
     else:
         # This one is good - keep it for the target CSV
         rows.append((wav_filename, file_size, label))
+        counter["imported_time"] += frames
     counter["all"] += 1
     counter["total_time"] += frames
 
@@ -136,9 +137,9 @@ def _maybe_convert_sets(target_dir, extracted_data):
     pool.close()
     pool.join()
 
-    with open(target_csv_template.format("train"), "w") as train_csv_file:  # 80%
-        with open(target_csv_template.format("dev"), "w") as dev_csv_file:  # 10%
-            with open(target_csv_template.format("test"), "w") as test_csv_file:  # 10%
+    with open(target_csv_template.format("train"), "w", encoding="utf-8", newline="") as train_csv_file:  # 80%
+        with open(target_csv_template.format("dev"), "w", encoding="utf-8", newline="") as dev_csv_file:  # 10%
+            with open(target_csv_template.format("test"), "w", encoding="utf-8", newline="") as test_csv_file:  # 10%
                 train_writer = csv.DictWriter(train_csv_file, fieldnames=FIELDNAMES)
                 train_writer.writeheader()
                 dev_writer = csv.DictWriter(dev_csv_file, fieldnames=FIELDNAMES)
@@ -197,7 +198,7 @@ def handle_args():
         "--iso639-3", type=str, required=True, help="ISO639-3 language code"
     )
     parser.add_argument(
-        "--english-name", type=str, required=True, help="Enligh name of the language"
+        "--english-name", type=str, required=True, help="English name of the language"
     )
     parser.add_argument(
         "--filter_alphabet",
@@ -241,11 +242,8 @@ if __name__ == "__main__":
                 .decode("ascii", "ignore")
             )
         label = validate_label(label)
-        if ALPHABET and label:
-            try:
-                ALPHABET.encode(label)
-            except KeyError:
-                label = None
+        if ALPHABET and label and not ALPHABET.CanEncode(label):
+            label = None
         return label
 
     ARCHIVE_NAME = ARCHIVE_NAME.format(

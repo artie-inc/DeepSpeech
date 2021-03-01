@@ -16,7 +16,7 @@ if [ "${OS}" = "${TC_MSYS_VERSION}" ]; then
     export DS_CPU_COUNT=$(nproc)
 
     # Those are the versions available on NuGet.org
-    export SUPPORTED_PYTHON_VERSIONS="3.5.4:ucs2 3.6.8:ucs2 3.7.6:ucs2 3.8.1:ucs2"
+    export SUPPORTED_PYTHON_VERSIONS="3.5.4:ucs2 3.6.8:ucs2 3.7.6:ucs2 3.8.1:ucs2 3.9.0:ucs2"
 fi;
 
 if [ "${OS}" = "Darwin" ]; then
@@ -25,7 +25,7 @@ if [ "${OS}" = "Darwin" ]; then
     export PYENV_ROOT="${DS_ROOT_TASK}/pyenv-root"
 
     export HOMEBREW_NO_AUTO_UPDATE=1
-    export BREW_URL=https://github.com/Homebrew/brew/tarball/2.1.14
+    export BREW_URL=https://github.com/Homebrew/brew/tarball/2.2.17
 
     export BUILDS_BREW="${TASKCLUSTER_TASK_DIR}/homebrew-builds"
     export TESTS_BREW="${TASKCLUSTER_TASK_DIR}/homebrew-tests"
@@ -42,10 +42,6 @@ if [ "${OS}" = "Darwin" ]; then
     fi;
 fi;
 
-PY37_OPENSSL_DIR="${PYENV_ROOT}/ssl-xenial"
-export PY37_LDPATH="${PY37_OPENSSL_DIR}/usr/lib/"
-export LD_LIBRARY_PATH=${PY37_LDPATH}:$LD_LIBRARY_PATH
-
 export TASKCLUSTER_ARTIFACTS=${TASKCLUSTER_ARTIFACTS:-/tmp/artifacts}
 export TASKCLUSTER_TMP_DIR=${TASKCLUSTER_TMP_DIR:-/tmp}
 
@@ -53,11 +49,11 @@ export ANDROID_TMP_DIR=/data/local/tmp
 
 mkdir -p ${TASKCLUSTER_TMP_DIR} || true
 
-export DS_TFDIR=${DS_ROOT_TASK}/DeepSpeech/tf
+export DS_TFDIR=${DS_ROOT_TASK}/DeepSpeech/ds/tensorflow
 export DS_DSDIR=${DS_ROOT_TASK}/DeepSpeech/ds
 export DS_EXAMPLEDIR=${DS_ROOT_TASK}/DeepSpeech/examples
 
-export DS_VERSION="$(cat ${DS_DSDIR}/VERSION)"
+export DS_VERSION="$(cat ${DS_DSDIR}/training/deepspeech_training/VERSION)"
 
 export GRADLE_USER_HOME=${DS_ROOT_TASK}/gradle-cache
 export ANDROID_SDK_HOME=${DS_ROOT_TASK}/DeepSpeech/Android/SDK/
@@ -67,6 +63,7 @@ WGET=${WGET:-"wget"}
 TAR=${TAR:-"tar"}
 XZ=${XZ:-"pixz -9"}
 UNXZ=${UNXZ:-"pixz -d"}
+UNGZ=${UNGZ:-"gunzip"}
 
 if [ "${OS}" = "${TC_MSYS_VERSION}" ]; then
   WGET=/usr/bin/wget.exe
@@ -82,10 +79,15 @@ model_source_mmap="$(dirname "${model_source}")/${model_name_mmap}"
 
 ldc93s1_sample_filename=''
 
-SUPPORTED_PYTHON_VERSIONS=${SUPPORTED_PYTHON_VERSIONS:-3.5.8:ucs2 3.6.10:ucs2 3.7.6:ucs2 3.8.1:ucs2}
+SUPPORTED_PYTHON_VERSIONS=${SUPPORTED_PYTHON_VERSIONS:-3.5.8:ucs2 3.6.10:ucs2 3.7.6:ucs2 3.8.1:ucs2 3.9.0:ucs2}
 
 # When updating NodeJS / ElectronJS supported versions, do not forget to increment
 # deepspeech.node-gyp-cache.<X> in both `system.node_gyp_cache` (taskcluster/.shared.yml)
 # and route index (taskcluster/node-gyp-cache.yml) to ensure the cache is updated
-SUPPORTED_NODEJS_VERSIONS=${SUPPORTED_NODEJS_VERSIONS:-10.18.1 11.15.0 12.8.1 13.1.0}
-SUPPORTED_ELECTRONJS_VERSIONS=${SUPPORTED_ELECTRONJS_VERSIONS:-5.0.13 6.0.12 6.1.7 7.0.1 7.1.8 8.0.1}
+#
+# Also, builds should always target first major branch release to ensure proper binary compatibility
+# and tests should always target latest major branch release version
+SUPPORTED_NODEJS_BUILD_VERSIONS=${SUPPORTED_NODEJS_BUILD_VERSIONS:-10.0.0 11.0.0 12.7.0 13.0.0 14.0.0 15.0.0}
+SUPPORTED_NODEJS_TESTS_VERSIONS=${SUPPORTED_NODEJS_TESTS_VERSIONS:-10.20.1 11.15.0 12.17.0 13.14.0 14.3.0 15.0.0}
+
+SUPPORTED_ELECTRONJS_VERSIONS=${SUPPORTED_ELECTRONJS_VERSIONS:-5.0.13 6.0.12 6.1.7 7.0.1 7.1.8 8.0.1 9.0.1 9.1.0 9.2.0 10.0.0 10.1.0 11.0.0}

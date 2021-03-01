@@ -19,12 +19,15 @@ maybe_setup_virtualenv_cross_arm "${pyalias}" "deepspeech"
 
 virtualenv_activate "${pyalias}" "deepspeech"
 
-deepspeech_pkg_url=$(get_python_pkg_url ${pyver_pkg} ${py_unicode_type})
+pkg_name=$(get_tflite_python_pkg_name)
+deepspeech_pkg_url=$(get_python_pkg_url "${pyver_pkg}" "${py_unicode_type}" "${pkg_name}")
 LD_LIBRARY_PATH=${PY37_LDPATH}:$LD_LIBRARY_PATH pip install --verbose --only-binary :all: --upgrade ${deepspeech_pkg_url} | cat
 
 which deepspeech
 deepspeech --version
 
 run_all_inference_tests
+
+run_hotword_tests
 
 virtualenv_deactivate "${pyalias}" "deepspeech"
